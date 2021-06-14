@@ -1,0 +1,2088 @@
+---
+title: "Using Machine Learning Methods to Understand Financial Literacy, by G.F.A. Nibbering"
+output: html_notebook
+---
+
+This is the R code that is used in the analysis of my master thesis: "Using Machine Learning to Understand Financial Literacy". 
+
+It uses household data from the LISS Panel Data. This is a database that contains much information on Dutch households. Anyone connected to a research institution can contact the LISS Panel and request access to their data. The corresponding data sets that have been used for the analyses in this notebook are references to below.
+
+#Libraries
+```{r}
+# This package allows .SAV files to be imported into R
+library(haven)
+
+# These packages are useful for data organization
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(skimr)
+
+# Packages for analysis
+library(hdm)
+```
+
+#Data Source
+The data sets used for this anlaysis can be accesed through the following sources:
+
+Asset.12: https://www.dataarchive.lissdata.nl/study_units/view/331
+Income.11: https://www.dataarchive.lissdata.nl/study_units/view/260
+Income.12: https://www.dataarchive.lissdata.nl/study_units/view/328
+Housing.11: https://www.dataarchive.lissdata.nl/study_units/view/220
+Personality.11: https://www.dataarchive.lissdata.nl/study_units/view/208
+Work.11: https://www.dataarchive.lissdata.nl/study_units/view/244
+Integration.11: https://www.dataarchive.lissdata.nl/study_units/view/221
+Demographics.11: https://www.dataarchive.lissdata.nl/study_units/view/205
+Background.11: https://www.dataarchive.lissdata.nl/study_units/view/322 (English 2011 January)
+F.Literacy.11: https://www.dataarchive.lissdata.nl/study_units/view/257
+Risk.12: https://www.dataarchive.lissdata.nl/study_units/view/320
+
+
+#Importing the data
+```{r}
+# Data on Assets (ca)
+Asset.12 <- as.data.frame(read_sav("ca12c_EN_1.0p.sav"))
+
+# Data on Income (ci)
+Income.11 <- as.data.frame(read_sav("ci11d_EN_1.0p.sav"))
+Income.12 <- as.data.frame(read_sav("ci12e_1.0p_EN.sav"))
+
+# Data on Housing (cd)
+Housing.11 <- as.data.frame(read_sav("cd11d_EN_2.0p.sav"))
+
+# Data on Personality (cp)
+Personality.11 <- as.data.frame(read_sav("cp11d_1.0p_EN.sav"))
+
+# Data on Work and Schooling (cw)
+# Please note the year 2011 was only available in .dta format
+Work.11 <- as.data.frame(read_dta("cw11d_EN_1.0p.dta"))
+
+# Data on Social Integration and Leisure (cs)
+Integration.11 <- as.data.frame(read_sav("cs11d_EN_3.0p.sav"))
+
+# Data on Religion and Ethnicity
+Demographics.11 <- as.data.frame(read_sav("cr11d_EN_1.0p.sav"))
+
+#Background Variables
+Background.11 <- as.data.frame(read_sav("avars_201101_EN_2.0p.sav"))
+
+#Financial Literacy specific Data
+F.Literacy.11 <- as.data.frame(read_sav("ew11a_EN_1.0p.sav"))
+
+#Risk Preferences
+Risk.12 <- as.data.frame(read_sav("ga12a_EN_1.0p.sav"))
+```
+
+
+#Data Examination
+
+A bar is set so that each included variable needs at least 95% complete data, for the data on income an exception is made, so that each variable can miss at most 15% of the data.
+
+```{r}
+# Asset.12
+na_counter <- sapply(Asset.12, function(x) sum(is.na(x)))
+vars <- colnames(Asset.12)
+
+# Extract all variables with NA-values
+na_values <- tibble(variables = vars, na_count = na_counter) 
+
+# Check na count per variable
+na_values %>%
+  filter(na_count > 0) %>%
+  arrange(desc(na_count))
+
+
+# Remove NA's from Asset.12
+variables_analysis <-   
+  na_values %>% 
+  filter(na_count <= (5588*0.05)) %>%
+  select(variables) %>% 
+  pull(variables)
+
+Asset.12 <- Asset.12 %>% select(all_of(variables_analysis))
+
+```
+
+The same is done for the housing data
+```{r}
+# Housing.11
+# Count missing cases per variable
+na_counter <- sapply(Housing.11, function(x) sum(is.na(x)))
+vars <- colnames(Housing.11)
+
+# Extract all variables with NA-values
+na_values <- tibble(variables = vars, na_count = na_counter) 
+
+# Check na count per variable
+na_values %>%
+  filter(na_count > 0) %>%
+  arrange(desc(na_count))
+
+
+# Remove NA's from Housing.11
+variables_analysis <-   
+  na_values %>% 
+  filter(na_count <= (3371*0.05)) %>%
+  select(variables) %>% 
+  pull(variables)
+
+Housing.11 <- Housing.11 %>% select(all_of(variables_analysis))
+```
+
+```{r}
+# Income.11
+# Count missing cases per variable
+na_counter <- sapply(Income.11, function(x) sum(is.na(x)))
+vars <- colnames(Income.11)
+
+# Extract all variables with NA-values
+na_values <- tibble(variables = vars, na_count = na_counter) 
+
+# Check na count per variable
+na_values %>%
+  filter(na_count > 0) %>%
+  arrange(desc(na_count))
+
+
+# Remove NA's from Income.11
+variables_analysis <-   
+  na_values %>% 
+  filter(na_count <= (5240*0.15)) %>%
+  select(variables) %>% 
+  pull(variables)
+
+Income.11 <- Income.11 %>% select(all_of(variables_analysis))
+
+
+
+# Income.12
+# Count missing cases per variable
+na_counter <- sapply(Income.12, function(x) sum(is.na(x)))
+vars <- colnames(Income.12)
+
+# Extract all variables with NA-values
+na_values <- tibble(variables = vars, na_count = na_counter) 
+
+# Check na count per variable
+na_values %>%
+  filter(na_count > 0) %>%
+  arrange(desc(na_count))
+
+
+# Remove NA's from Income.12
+variables_analysis <-   
+  na_values %>% 
+  filter(na_count <= (5761*0.155)) %>%
+  select(variables) %>% 
+  pull(variables)
+
+Income.12 <- Income.12 %>% select(all_of(variables_analysis))
+```
+
+```{r}
+# Integration.11
+# Count missing cases per variable
+na_counter <- sapply(Integration.11, function(x) sum(is.na(x)))
+vars <- colnames(Integration.11)
+
+# Extract all variables with NA-values
+na_values <- tibble(variables = vars, na_count = na_counter) 
+
+# Check na count per variable
+na_values %>%
+  filter(na_count > 0) %>%
+  arrange(desc(na_count))
+
+
+# Remove NA's from Integration.11
+variables_analysis <-   
+  na_values %>% 
+  filter(na_count <= (5661*0.05)) %>%
+  select(variables) %>% 
+  pull(variables)
+
+Integration.11 <- Integration.11 %>% select(all_of(variables_analysis))
+```
+
+```{r}
+# Personality.11
+# Count missing cases per variable
+na_counter <- sapply(Personality.11, function(x) sum(is.na(x)))
+vars <- colnames(Personality.11)
+
+# Extract all variables with NA-values
+na_values <- tibble(variables = vars, na_count = na_counter) 
+
+# Check na count per variable
+na_values %>%
+  filter(na_count > 0) %>%
+  arrange(desc(na_count))
+
+
+# Remove NA's from Personality.11
+variables_analysis <-   
+  na_values %>% 
+  filter(na_count <= (5321*0.05)) %>%
+  select(variables) %>% 
+  pull(variables)
+
+Personality.11 <- Personality.11 %>% select(all_of(variables_analysis))
+```
+
+```{r}
+# Work.11
+# Count missing cases per variable
+na_counter <- sapply(Work.11, function(x) sum(is.na(x)))
+vars <- colnames(Work.11)
+
+# Extract all variables with NA-values
+na_values <- tibble(variables = vars, na_count = na_counter) 
+
+# Check na count per variable
+na_values %>%
+  filter(na_count > 0) %>%
+  arrange(desc(na_count))
+
+
+# Remove NA's from Work.11
+variables_analysis <-   
+  na_values %>% 
+  filter(na_count <= (5358*0.05)) %>%
+  select(variables) %>% 
+  pull(variables)
+
+Work.11 <- Work.11 %>% select(all_of(variables_analysis))
+```
+
+```{r}
+# Demographics.11
+# Count missing cases per variable
+na_counter <- sapply(Demographics.11, function(x) sum(is.na(x)))
+vars <- colnames(Demographics.11)
+
+# Extract all variables with NA-values
+na_values <- tibble(variables = vars, na_count = na_counter) 
+
+# Check na count per variable
+na_values %>%
+  filter(na_count > 0) %>%
+  arrange(desc(na_count))
+
+
+# Remove NA's from Demographics.11
+variables_analysis <-   
+  na_values %>% 
+  filter(na_count <= (5358*0.05)) %>%
+  select(variables) %>% 
+  pull(variables)
+
+Demographics.11 <- Demographics.11 %>% select(all_of(variables_analysis))
+```
+
+
+#Data Transformations
+
+Assets
+```{r}
+#Make a dataframe exlcusing survey questions about the survey
+Asset.12 <- Asset.12[,1:23]
+
+#Delete variables that describe the same information as other variables
+Asset.12$ca12c001 <- NULL
+Asset.12$ca12c003 <- NULL
+Asset.12$ca12c082 <- NULL
+Asset.12$ca12c_m <- NULL
+
+#Changing the variable type of the variables
+Asset.12[,1:19] <- as.numeric(unlist(list(Asset.12[,1:19])))
+
+#Changing variables in which 12 corresponds to no to 0
+Asset.12$ca12c010[Asset.12$ca12c010 == 2] <- 0
+Asset.12$ca12c011[Asset.12$ca12c011 == 2] <- 0
+Asset.12$ca12c079[Asset.12$ca12c079 == 2] <- 0
+Asset.12$ca12c080[Asset.12$ca12c080 == 2] <- 0
+Asset.12$ca12c081[Asset.12$ca12c081 == 2] <- 0
+```
+
+```{r, eval=FALSE}
+# Setting the appropriate variables to as.factor()
+Asset.12$ca12c078 <- as.factor(Asset.12$ca12c078)
+Asset.12$ca12c005 <- as.factor(Asset.12$ca12c005)
+Asset.12$ca12c006 <- as.factor(Asset.12$ca12c006)
+Asset.12$ca12c007 <- as.factor(Asset.12$ca12c007)
+Asset.12$ca12c008 <- as.factor(Asset.12$ca12c008)
+Asset.12$ca12c009 <- as.factor(Asset.12$ca12c009)
+Asset.12$ca12c010 <- as.factor(Asset.12$ca12c010)
+Asset.12$ca12c011 <- as.factor(Asset.12$ca12c011)
+Asset.12$ca12c079 <- as.factor(Asset.12$ca12c079)
+Asset.12$ca12c080 <- as.factor(Asset.12$ca12c080)
+Asset.12$ca12c081 <- as.factor(Asset.12$ca12c081)
+Asset.12$ca12c057 <- as.factor(Asset.12$ca12c057)
+Asset.12$ca12c058 <- as.factor(Asset.12$ca12c058)
+Asset.12$ca12c059 <- as.factor(Asset.12$ca12c059)
+Asset.12$ca12c060 <- as.factor(Asset.12$ca12c060)
+Asset.12$ca12c061 <- as.factor(Asset.12$ca12c061)
+Asset.12$ca12c062 <- as.factor(Asset.12$ca12c062)
+```
+
+
+Housing
+```{r}
+#Make a dataframe that excludes survey questions about the survey
+Housing.11 <- Housing.11[,1:34]
+
+#Delete variables that describe the same information as other variables
+Housing.11$nohouse_encr <- NULL
+Housing.11$cd11d_m <- NULL
+Housing.11$cd11d007 <- NULL
+Housing.11$cd11d032 <- NULL
+Housing.11$cd11d034 <- NULL
+Housing.11$cd11d057 <- NULL
+Housing.11$cd11d065 <- NULL
+Housing.11$cd11d071 <- NULL
+
+#Changing the variable type of the variables
+Housing.11[,1:19] <- as.numeric(unlist(list(Housing.11[,1:19])))
+
+#Changing variables in which 12 corresponds to no to 0
+Housing.11$cd11d035[Housing.11$cd11d035 == 2] <- 0
+Housing.11$cd11d054[Housing.11$cd11d054 == 2] <- 0
+Housing.11$cd11d055[Housing.11$cd11d055 == 2] <- 0
+Housing.11$cd11d058[Housing.11$cd11d058 == 2] <- 0
+
+# Setting the appropriate variables to as.factor()
+Housing.11$cd11d003 <- as.factor(Housing.11$cd11d003)
+Housing.11$cd11d035 <- as.factor(Housing.11$cd11d035)
+Housing.11$cd11d038 <- as.factor(Housing.11$cd11d038)
+Housing.11$cd11d041 <- as.factor(Housing.11$cd11d041)
+Housing.11$cd11d042 <- as.factor(Housing.11$cd11d042)
+Housing.11$cd11d043 <- as.factor(Housing.11$cd11d043)
+Housing.11$cd11d044 <- as.factor(Housing.11$cd11d044)
+Housing.11$cd11d045 <- as.factor(Housing.11$cd11d045)
+Housing.11$cd11d046 <- as.factor(Housing.11$cd11d046)
+Housing.11$cd11d047 <- as.factor(Housing.11$cd11d047)
+Housing.11$cd11d048 <- as.factor(Housing.11$cd11d048)
+Housing.11$cd11d049 <- as.factor(Housing.11$cd11d049)
+Housing.11$cd11d050 <- as.factor(Housing.11$cd11d050)
+Housing.11$cd11d051 <- as.factor(Housing.11$cd11d051)
+Housing.11$cd11d052 <- as.factor(Housing.11$cd11d052)
+Housing.11$cd11d053 <- as.factor(Housing.11$cd11d053)
+Housing.11$cd11d054 <- as.factor(Housing.11$cd11d054)
+Housing.11$cd11d055 <- as.factor(Housing.11$cd11d055)
+Housing.11$cd11d058 <- as.factor(Housing.11$cd11d058)
+
+#Creating dummies for the variables for which that is necessary
+#For housing the status of tenant is taken as the base variable
+Housing.11$cd11d003_2 <- as.factor(ifelse(Housing.11$cd11d003 == 2, 1, 0))
+Housing.11$cd11d003_3 <- as.factor(ifelse(Housing.11$cd11d003 == 3, 1, 0))
+Housing.11$cd11d003_4 <- as.factor(ifelse(Housing.11$cd11d003 == 4, 1, 0))
+Housing.11$cd11d003 <- NULL
+
+#For types of dwelling a single family home that is detached is taken as the base variable
+Housing.11$cd11d038_2 <- as.factor(ifelse(Housing.11$cd11d038 == 2, 1, 0))
+Housing.11$cd11d038_3 <- as.factor(ifelse(Housing.11$cd11d038 == 3, 1, 0))
+Housing.11$cd11d038_4 <- as.factor(ifelse(Housing.11$cd11d038 == 4, 1, 0))
+Housing.11$cd11d038_5 <- as.factor(ifelse(Housing.11$cd11d038 == 5, 1, 0))
+Housing.11$cd11d038_6 <- as.factor(ifelse(Housing.11$cd11d038 == 6, 1, 0))
+Housing.11$cd11d038_7 <- as.factor(ifelse(Housing.11$cd11d038 == 7, 1, 0))
+Housing.11$cd11d038_8 <- as.factor(ifelse(Housing.11$cd11d038 == 8, 1, 0))
+Housing.11$cd11d038_9 <- as.factor(ifelse(Housing.11$cd11d038 == 9, 1, 0))
+Housing.11$cd11d038_10 <- as.factor(ifelse(Housing.11$cd11d038 == 10, 1, 0))
+Housing.11$cd11d038 <- NULL
+
+#Setting survey questions that are on a scale as an ordered factor
+Housing.11$cd11d001 <- ordered(Housing.11$cd11d001)
+Housing.11$cd11d002 <- ordered(Housing.11$cd11d002)
+
+#Changing variables that specify years to make them more intelligible
+## the year the respondent moved in their dwelling has been converted to describe the number of years the respondent has lived in their dwelling
+Housing.11$cd11d036 <- 2011 - Housing.11$cd11d036
+## the year the respondent has been living in their municipality has been converted to describe the number of years the respondent has lived in their municipality
+Housing.11$cd11d037 <- 2011 - Housing.11$cd11d037
+```
+
+Income of the year 2011
+```{r}
+#Make a dataframe that excludes survey questions about the survey (and in this case some extra empty variables)
+Income.11 <- Income.11[,1:85]
+
+#Delete variables that describe the same information as other variables
+Income.11$nohouse_encr <- NULL
+Income.11$ci11d_m <- NULL
+Income.11$ci11d001 <- NULL
+Income.11$ci11d002 <- NULL
+Income.11$ci11d003 <- NULL
+Income.11$ci11d326 <- NULL
+Income.11$ci11d004 <- NULL
+Income.11$ci11d018 <- NULL
+Income.11$ci11d027 <- NULL
+Income.11$ci11d036 <- NULL
+## already included in the Asset data
+Income.11$ci11d042 <- NULL
+Income.11$ci11d055 <- NULL
+Income.11$ci11d190 <- NULL
+#measures for happiness already included in other data sets
+Income.11$ci11d263 <- NULL
+
+#Changing the variable type of the variables
+Income.11[,1:71] <- as.numeric(unlist(list(Income.11[,1:71])))
+
+#Changing variables in which 12 corresponds to no to 0
+Income.11$ci11d008[Income.11$ci11d008 == 2] <- 0
+Income.11$ci11d175[Income.11$ci11d175 == 2] <- 0
+Income.11$ci11d177[Income.11$ci11d177 == 2] <- 0
+Income.11$ci11d203[Income.11$ci11d203 == 2] <- 0
+Income.11$ci11d213[Income.11$ci11d213 == 2] <- 0
+
+#Setting the appropriate variables to as.factor()
+Income.11$ci11d008 <- as.factor(Income.11$ci11d008)
+Income.11$ci11d037 <- as.factor(Income.11$ci11d037)
+Income.11$ci11d038 <- as.factor(Income.11$ci11d038)
+Income.11$ci11d039 <- as.factor(Income.11$ci11d039)
+Income.11$ci11d040 <- as.factor(Income.11$ci11d040)
+Income.11$ci11d041 <- as.factor(Income.11$ci11d041)
+#Income.11$ci11d042 <- as.factor(Income.11$ci11d042)
+Income.11$ci11d043 <- as.factor(Income.11$ci11d043)
+Income.11$ci11d044 <- as.factor(Income.11$ci11d044)
+Income.11$ci11d045 <- as.factor(Income.11$ci11d045)
+Income.11$ci11d087 <- as.factor(Income.11$ci11d087)
+Income.11$ci11d088 <- as.factor(Income.11$ci11d088)
+Income.11$ci11d089 <- as.factor(Income.11$ci11d089)
+Income.11$ci11d090 <- as.factor(Income.11$ci11d090)
+Income.11$ci11d091 <- as.factor(Income.11$ci11d091)
+Income.11$ci11d092 <- as.factor(Income.11$ci11d092)
+Income.11$ci11d341 <- as.factor(Income.11$ci11d341)
+Income.11$ci11d094 <- as.factor(Income.11$ci11d094)
+Income.11$ci11d095 <- as.factor(Income.11$ci11d095)
+Income.11$ci11d096 <- as.factor(Income.11$ci11d096)
+Income.11$ci11d097 <- as.factor(Income.11$ci11d097)
+Income.11$ci11d098 <- as.factor(Income.11$ci11d098)
+Income.11$ci11d099 <- as.factor(Income.11$ci11d099)
+Income.11$ci11d100 <- as.factor(Income.11$ci11d100)
+Income.11$ci11d327 <- as.factor(Income.11$ci11d327)
+Income.11$ci11d328 <- as.factor(Income.11$ci11d328)
+Income.11$ci11d329 <- as.factor(Income.11$ci11d329)
+Income.11$ci11d101 <- as.factor(Income.11$ci11d101)
+Income.11$ci11d144 <- as.factor(Income.11$ci11d144)
+Income.11$ci11d145 <- as.factor(Income.11$ci11d145)
+Income.11$ci11d146 <- as.factor(Income.11$ci11d146)
+Income.11$ci11d147 <- as.factor(Income.11$ci11d147)
+Income.11$ci11d148 <- as.factor(Income.11$ci11d148)
+Income.11$ci11d149 <- as.factor(Income.11$ci11d149)
+Income.11$ci11d150 <- as.factor(Income.11$ci11d150)
+Income.11$ci11d151 <- as.factor(Income.11$ci11d151)
+Income.11$ci11d152 <- as.factor(Income.11$ci11d152)
+Income.11$ci11d153 <- as.factor(Income.11$ci11d153)
+Income.11$ci11d154 <- as.factor(Income.11$ci11d154)
+Income.11$ci11d175 <- as.factor(Income.11$ci11d175)
+Income.11$ci11d177 <- as.factor(Income.11$ci11d177)
+Income.11$ci11d203 <- as.factor(Income.11$ci11d203)
+Income.11$ci11d213 <- as.factor(Income.11$ci11d213)
+
+
+#Creating dummies for the variables for which that is necessary
+#for ex partner alimony, having to pay alimony to an ex-partner is taken as the base variable
+Income.11$ci11d205_2 <- as.factor(ifelse(Income.11$ci11d205 == 2, 1, 0))
+Income.11$ci11d205_3 <- as.factor(ifelse(Income.11$ci11d205 == 3, 1, 0))
+Income.11$ci11d205 <- NULL
+
+#for ex children alimony, having to pay alimony to a child (or children) is taken as the base variable
+Income.11$ci11d207_2 <- as.factor(ifelse(Income.11$ci11d207 == 2, 1, 0))
+Income.11$ci11d207_3 <- as.factor(ifelse(Income.11$ci11d207 == 3, 1, 0))
+Income.11$ci11d207 <- NULL
+
+#REMANING VARIABLES ARE ALL FIVE LEVEL CATEGORICAL VARIABLES
+Income.11$ci11d266_2 <- as.factor(ifelse(Income.11$ci11d266 == 2, 1, 0))
+Income.11$ci11d266_3 <- as.factor(ifelse(Income.11$ci11d266 == 3, 1, 0))
+Income.11$ci11d266_4 <- as.factor(ifelse(Income.11$ci11d266 == 4, 1, 0))
+Income.11$ci11d266_5 <- as.factor(ifelse(Income.11$ci11d266 == 5, 1, 0))
+Income.11$ci11d266 <- NULL
+
+Income.11$ci11d267_2 <- as.factor(ifelse(Income.11$ci11d267 == 2, 1, 0))
+Income.11$ci11d267_3 <- as.factor(ifelse(Income.11$ci11d267 == 3, 1, 0))
+Income.11$ci11d267_4 <- as.factor(ifelse(Income.11$ci11d267 == 4, 1, 0))
+Income.11$ci11d267_5 <- as.factor(ifelse(Income.11$ci11d267 == 5, 1, 0))
+Income.11$ci11d267 <- NULL
+
+Income.11$ci11d268_2 <- as.factor(ifelse(Income.11$ci11d268 == 2, 1, 0))
+Income.11$ci11d268_3 <- as.factor(ifelse(Income.11$ci11d268 == 3, 1, 0))
+Income.11$ci11d268_4 <- as.factor(ifelse(Income.11$ci11d268 == 4, 1, 0))
+Income.11$ci11d268_5 <- as.factor(ifelse(Income.11$ci11d268 == 5, 1, 0))
+Income.11$ci11d268 <- NULL
+
+Income.11$ci11d269_2 <- as.factor(ifelse(Income.11$ci11d269 == 2, 1, 0))
+Income.11$ci11d269_3 <- as.factor(ifelse(Income.11$ci11d269 == 3, 1, 0))
+Income.11$ci11d269_4 <- as.factor(ifelse(Income.11$ci11d269 == 4, 1, 0))
+Income.11$ci11d269_5 <- as.factor(ifelse(Income.11$ci11d269 == 5, 1, 0))
+Income.11$ci11d269 <- NULL
+
+Income.11$ci11d270_2 <- as.factor(ifelse(Income.11$ci11d270 == 2, 1, 0))
+Income.11$ci11d270_3 <- as.factor(ifelse(Income.11$ci11d270 == 3, 1, 0))
+Income.11$ci11d270_4 <- as.factor(ifelse(Income.11$ci11d270 == 4, 1, 0))
+Income.11$ci11d270_5 <- as.factor(ifelse(Income.11$ci11d270 == 5, 1, 0))
+Income.11$ci11d270 <- NULL
+
+Income.11$ci11d273_2 <- as.factor(ifelse(Income.11$ci11d273 == 2, 1, 0))
+Income.11$ci11d273_3 <- as.factor(ifelse(Income.11$ci11d273 == 3, 1, 0))
+Income.11$ci11d273_4 <- as.factor(ifelse(Income.11$ci11d273 == 4, 1, 0))
+Income.11$ci11d273_5 <- as.factor(ifelse(Income.11$ci11d273 == 5, 1, 0))
+Income.11$ci11d273 <- NULL
+
+Income.11$ci11d274_2 <- as.factor(ifelse(Income.11$ci11d274 == 2, 1, 0))
+Income.11$ci11d274_3 <- as.factor(ifelse(Income.11$ci11d274 == 3, 1, 0))
+Income.11$ci11d274_4 <- as.factor(ifelse(Income.11$ci11d274 == 4, 1, 0))
+Income.11$ci11d274_5 <- as.factor(ifelse(Income.11$ci11d274 == 5, 1, 0))
+Income.11$ci11d274 <- NULL
+
+Income.11$ci11d275_2 <- as.factor(ifelse(Income.11$ci11d275 == 2, 1, 0))
+Income.11$ci11d275_3 <- as.factor(ifelse(Income.11$ci11d275 == 3, 1, 0))
+Income.11$ci11d275_4 <- as.factor(ifelse(Income.11$ci11d275 == 4, 1, 0))
+Income.11$ci11d275_5 <- as.factor(ifelse(Income.11$ci11d275 == 5, 1, 0))
+Income.11$ci11d275 <- NULL
+
+Income.11$ci11d276_2 <- as.factor(ifelse(Income.11$ci11d276 == 2, 1, 0))
+Income.11$ci11d276_3 <- as.factor(ifelse(Income.11$ci11d276 == 3, 1, 0))
+Income.11$ci11d276_4 <- as.factor(ifelse(Income.11$ci11d276 == 4, 1, 0))
+Income.11$ci11d276_5 <- as.factor(ifelse(Income.11$ci11d276 == 5, 1, 0))
+Income.11$ci11d276 <- NULL
+
+Income.11$ci11d277_2 <- as.factor(ifelse(Income.11$ci11d277 == 2, 1, 0))
+Income.11$ci11d277_3 <- as.factor(ifelse(Income.11$ci11d277 == 3, 1, 0))
+Income.11$ci11d277_4 <- as.factor(ifelse(Income.11$ci11d277 == 4, 1, 0))
+Income.11$ci11d277_5 <- as.factor(ifelse(Income.11$ci11d277 == 5, 1, 0))
+Income.11$ci11d277 <- NULL
+
+Income.11$ci11d279_2 <- as.factor(ifelse(Income.11$ci11d279 == 2, 1, 0))
+Income.11$ci11d279_3 <- as.factor(ifelse(Income.11$ci11d279 == 3, 1, 0))
+Income.11$ci11d279_4 <- as.factor(ifelse(Income.11$ci11d279 == 4, 1, 0))
+Income.11$ci11d279_5 <- as.factor(ifelse(Income.11$ci11d279 == 5, 1, 0))
+Income.11$ci11d279 <- NULL
+
+Income.11$ci11d280_2 <- as.factor(ifelse(Income.11$ci11d280 == 2, 1, 0))
+Income.11$ci11d280_3 <- as.factor(ifelse(Income.11$ci11d280 == 3, 1, 0))
+Income.11$ci11d280_4 <- as.factor(ifelse(Income.11$ci11d280 == 4, 1, 0))
+Income.11$ci11d280_5 <- as.factor(ifelse(Income.11$ci11d280 == 5, 1, 0))
+Income.11$ci11d280 <- NULL
+
+Income.11$ci11d281_2 <- as.factor(ifelse(Income.11$ci11d281 == 2, 1, 0))
+Income.11$ci11d281_3 <- as.factor(ifelse(Income.11$ci11d281 == 3, 1, 0))
+Income.11$ci11d281_4 <- as.factor(ifelse(Income.11$ci11d281 == 4, 1, 0))
+Income.11$ci11d281_5 <- as.factor(ifelse(Income.11$ci11d281 == 5, 1, 0))
+Income.11$ci11d281 <- NULL
+
+Income.11$ci11d282_2 <- as.factor(ifelse(Income.11$ci11d282 == 2, 1, 0))
+Income.11$ci11d282_3 <- as.factor(ifelse(Income.11$ci11d282 == 3, 1, 0))
+Income.11$ci11d282_4 <- as.factor(ifelse(Income.11$ci11d282 == 4, 1, 0))
+Income.11$ci11d282_5 <- as.factor(ifelse(Income.11$ci11d282 == 5, 1, 0))
+Income.11$ci11d282 <- NULL
+
+Income.11$ci11d283_2 <- as.factor(ifelse(Income.11$ci11d283 == 2, 1, 0))
+Income.11$ci11d283_3 <- as.factor(ifelse(Income.11$ci11d283 == 3, 1, 0))
+Income.11$ci11d283_4 <- as.factor(ifelse(Income.11$ci11d283 == 4, 1, 0))
+Income.11$ci11d283_5 <- as.factor(ifelse(Income.11$ci11d283 == 5, 1, 0))
+Income.11$ci11d283 <- NULL
+
+Income.11$ci11d284_2 <- as.factor(ifelse(Income.11$ci11d284 == 2, 1, 0))
+Income.11$ci11d284_3 <- as.factor(ifelse(Income.11$ci11d284 == 3, 1, 0))
+Income.11$ci11d284_4 <- as.factor(ifelse(Income.11$ci11d284 == 4, 1, 0))
+Income.11$ci11d284_5 <- as.factor(ifelse(Income.11$ci11d284 == 5, 1, 0))
+Income.11$ci11d284 <- NULL
+
+Income.11$ci11d285_2 <- as.factor(ifelse(Income.11$ci11d285 == 2, 1, 0))
+Income.11$ci11d285_3 <- as.factor(ifelse(Income.11$ci11d285 == 3, 1, 0))
+Income.11$ci11d285_4 <- as.factor(ifelse(Income.11$ci11d285 == 4, 1, 0))
+Income.11$ci11d285_5 <- as.factor(ifelse(Income.11$ci11d285 == 5, 1, 0))
+Income.11$ci11d285 <- NULL
+
+Income.11$ci11d286_2 <- as.factor(ifelse(Income.11$ci11d286 == 2, 1, 0))
+Income.11$ci11d286_3 <- as.factor(ifelse(Income.11$ci11d286 == 3, 1, 0))
+Income.11$ci11d286_4 <- as.factor(ifelse(Income.11$ci11d286 == 4, 1, 0))
+Income.11$ci11d286_5 <- as.factor(ifelse(Income.11$ci11d286 == 5, 1, 0))
+Income.11$ci11d286 <- NULL
+
+Income.11$ci11d287_2 <- as.factor(ifelse(Income.11$ci11d287 == 2, 1, 0))
+Income.11$ci11d287_3 <- as.factor(ifelse(Income.11$ci11d287 == 3, 1, 0))
+Income.11$ci11d287_4 <- as.factor(ifelse(Income.11$ci11d287 == 4, 1, 0))
+Income.11$ci11d287_5 <- as.factor(ifelse(Income.11$ci11d287 == 5, 1, 0))
+Income.11$ci11d287 <- NULL
+
+Income.11$ci11d288_2 <- as.factor(ifelse(Income.11$ci11d288 == 2, 1, 0))
+Income.11$ci11d288_3 <- as.factor(ifelse(Income.11$ci11d288 == 3, 1, 0))
+Income.11$ci11d288_4 <- as.factor(ifelse(Income.11$ci11d288 == 4, 1, 0))
+Income.11$ci11d288_5 <- as.factor(ifelse(Income.11$ci11d288 == 5, 1, 0))
+Income.11$ci11d288 <- NULL
+
+Income.11$ci11d289_2 <- as.factor(ifelse(Income.11$ci11d289 == 2, 1, 0))
+Income.11$ci11d289_3 <- as.factor(ifelse(Income.11$ci11d289 == 3, 1, 0))
+Income.11$ci11d289_4 <- as.factor(ifelse(Income.11$ci11d289 == 4, 1, 0))
+Income.11$ci11d289_5 <- as.factor(ifelse(Income.11$ci11d289 == 5, 1, 0))
+Income.11$ci11d289 <- NULL
+
+Income.11$ci11d290_2 <- as.factor(ifelse(Income.11$ci11d290 == 2, 1, 0))
+Income.11$ci11d290_3 <- as.factor(ifelse(Income.11$ci11d290 == 3, 1, 0))
+Income.11$ci11d290_4 <- as.factor(ifelse(Income.11$ci11d290 == 4, 1, 0))
+Income.11$ci11d290_5 <- as.factor(ifelse(Income.11$ci11d290 == 5, 1, 0))
+Income.11$ci11d290 <- NULL
+
+Income.11$ci11d291_2 <- as.factor(ifelse(Income.11$ci11d291 == 2, 1, 0))
+Income.11$ci11d291_3 <- as.factor(ifelse(Income.11$ci11d291 == 3, 1, 0))
+Income.11$ci11d291_4 <- as.factor(ifelse(Income.11$ci11d291 == 4, 1, 0))
+Income.11$ci11d291_5 <- as.factor(ifelse(Income.11$ci11d291 == 5, 1, 0))
+Income.11$ci11d291 <- NULL
+
+#Setting survey questions that are on a scale as an ordered factor
+Income.11$ci11d005 <- ordered(Income.11$ci11d005)
+Income.11$ci11d006 <- ordered(Income.11$ci11d006)
+Income.11$ci11d007 <- ordered(Income.11$ci11d007)
+```
+
+
+Income of the year 2012 (Note that these variables will only be used to define the dependent variables)
+```{r}
+#Make a dataframe that excludes survey questions about the survey (and in this case some extra empty variables)
+Income.12 <- Income.12[,1:97]
+
+#Delete variables that describe the same information as other variables
+Income.12$nohouse_encr <- NULL
+Income.12$ci12e_m <- NULL
+Income.12$ci12e001 <- NULL
+Income.12$ci12e002 <- NULL
+Income.12$ci12e003 <- NULL
+Income.12$ci12e326 <- NULL
+Income.12$ci12e004 <- NULL
+Income.12$ci12e018 <- NULL
+Income.12$ci12e027 <- NULL
+Income.12$ci12e036 <- NULL
+Income.12$ci12e351 <- NULL
+## already included in the Asset data
+Income.12$ci12e042 <- NULL
+Income.12$ci12e055 <- NULL
+Income.12$ci12e190 <- NULL
+## measures for happiness already included in other data sets
+Income.12$ci12e263 <- NULL
+## variables that are redundant
+Income.12$ci12e296 <- NULL
+Income.12$ci12e297 <- NULL
+
+#Changing the variable type of the variables
+Income.12[,1:54] <- as.numeric(unlist(list(Income.12[,1:54])))
+
+#Changing variables in which 12 corresponds to no to 0
+Income.12$ci12e008[Income.12$ci12e008 == 2] <- 0
+Income.12$ci12e175[Income.12$ci12e175 == 2] <- 0
+Income.12$ci12e177[Income.12$ci12e177 == 2] <- 0
+Income.12$ci12e203[Income.12$ci12e203 == 2] <- 0
+Income.12$ci12e213[Income.12$ci12e213 == 2] <- 0
+
+#Creating dummies for the variables for which that is necessary
+#for ex partner alimony, having to pay alimony to an ex-partner is taken as the base variable
+Income.12$ci12e205_2 <- as.factor(ifelse(Income.12$ci12e205 == 2, 1, 0))
+Income.12$ci12e205_3 <- as.factor(ifelse(Income.12$ci12e205 == 3, 1, 0))
+Income.12$ci12e205 <- NULL
+
+#for ex children alimony, having to pay alimony to a child (or children) is taken as the base variable
+Income.12$ci12e207_2 <- as.factor(ifelse(Income.12$ci12e207 == 2, 1, 0))
+Income.12$ci12e207_3 <- as.factor(ifelse(Income.12$ci12e207 == 3, 1, 0))
+Income.12$ci12e207 <- NULL
+
+#Setting survey questions that are on a scale as an ordered factor
+Income.12$ci12e005 <- ordered(Income.12$ci12e005)
+Income.12$ci12e006 <- ordered(Income.12$ci12e006)
+Income.12$ci12e007 <- ordered(Income.12$ci12e007)
+```
+
+```{r, eval=FALSE}
+#Setting the appropriate variables to as.factor()
+Income.12$ci12e008 <- as.factor(Income.12$ci12e008)
+Income.12$ci12e037 <- as.factor(Income.12$ci12e037)
+Income.12$ci12e038 <- as.factor(Income.12$ci12e038)
+Income.12$ci12e039 <- as.factor(Income.12$ci12e039)
+Income.12$ci12e040 <- as.factor(Income.12$ci12e040)
+Income.12$ci12e041 <- as.factor(Income.12$ci12e041)
+#Income.12$ci12e042 <- as.factor(Income.12$ci12e042)
+Income.12$ci12e043 <- as.factor(Income.12$ci12e043)
+Income.12$ci12e044 <- as.factor(Income.12$ci12e044)
+Income.12$ci12e045 <- as.factor(Income.12$ci12e045)
+Income.12$ci12e087 <- as.factor(Income.12$ci12e087)
+Income.12$ci12e088 <- as.factor(Income.12$ci12e088)
+Income.12$ci12e089 <- as.factor(Income.12$ci12e089)
+Income.12$ci12e090 <- as.factor(Income.12$ci12e090)
+Income.12$ci12e091 <- as.factor(Income.12$ci12e091)
+Income.12$ci12e092 <- as.factor(Income.12$ci12e092)
+Income.12$ci12e341 <- as.factor(Income.12$ci12e341)
+Income.12$ci12e094 <- as.factor(Income.12$ci12e094)
+Income.12$ci12e095 <- as.factor(Income.12$ci12e095)
+Income.12$ci12e096 <- as.factor(Income.12$ci12e096)
+Income.12$ci12e097 <- as.factor(Income.12$ci12e097)
+Income.12$ci12e098 <- as.factor(Income.12$ci12e098)
+Income.12$ci12e099 <- as.factor(Income.12$ci12e099)
+Income.12$ci12e100 <- as.factor(Income.12$ci12e100)
+Income.12$ci12e327 <- as.factor(Income.12$ci12e327)
+Income.12$ci12e328 <- as.factor(Income.12$ci12e328)
+Income.12$ci12e329 <- as.factor(Income.12$ci12e329)
+Income.12$ci12e101 <- as.factor(Income.12$ci12e101)
+Income.12$ci12e144 <- as.factor(Income.12$ci12e144)
+Income.12$ci12e145 <- as.factor(Income.12$ci12e145)
+Income.12$ci12e146 <- as.factor(Income.12$ci12e146)
+Income.12$ci12e147 <- as.factor(Income.12$ci12e147)
+Income.12$ci12e148 <- as.factor(Income.12$ci12e148)
+Income.12$ci12e149 <- as.factor(Income.12$ci12e149)
+Income.12$ci12e150 <- as.factor(Income.12$ci12e150)
+Income.12$ci12e151 <- as.factor(Income.12$ci12e151)
+Income.12$ci12e152 <- as.factor(Income.12$ci12e152)
+Income.12$ci12e153 <- as.factor(Income.12$ci12e153)
+Income.12$ci12e154 <- as.factor(Income.12$ci12e154)
+Income.12$ci12e175 <- as.factor(Income.12$ci12e175)
+Income.12$ci12e177 <- as.factor(Income.12$ci12e177)
+Income.12$ci12e203 <- as.factor(Income.12$ci12e203)
+Income.12$ci12e213 <- as.factor(Income.12$ci12e213)
+```
+
+
+Work
+```{r}
+Work.11 <- Work.11[,1:85]
+
+#Remove empty variables
+Work.11$nohouse_encr <- NULL
+Work.11$cw11d_m <- NULL
+Work.11$cw11d000 <- NULL
+Work.11$cw11d007 <- NULL
+Work.11$cw11d010 <- NULL
+Work.11$cw11d029 <- NULL
+Work.11$cw11d037 <- NULL
+Work.11$cw11d041 <- NULL
+Work.11$cw11d048 <- NULL
+Work.11$cw11d051 <- NULL
+Work.11$cw11d054 <- NULL
+Work.11$cw11d058 <- NULL
+Work.11$cw11d065 <- NULL
+Work.11$cw11d068 <- NULL
+Work.11$cw11d071 <- NULL
+Work.11$cw11d075 <- NULL
+Work.11$cw11d082 <- NULL
+Work.11$cw11d085 <- NULL
+Work.11$cw11d112 <- NULL
+Work.11$cw11d148 <- NULL
+Work.11$cw11d152 <- NULL
+Work.11$cw11d156 <- NULL
+Work.11$cw11d160 <- NULL
+Work.11$cw11d164 <- NULL
+Work.11$cw11d168 <- NULL
+Work.11$cw11d172 <- NULL
+Work.11$cw11d176 <- NULL
+Work.11$cw11d180 <- NULL
+Work.11$cw11d184 <- NULL
+Work.11$cw11d224 <- NULL
+Work.11$cw11d225 <- NULL
+Work.11$cw11d226 <- NULL
+Work.11$cw11d227 <- NULL
+Work.11$cw11d228 <- NULL
+Work.11$cw11d229 <- NULL
+Work.11$cw11d230 <- NULL
+Work.11$cw11d231 <- NULL
+Work.11$cw11d232 <- NULL
+Work.11$cw11d233 <- NULL
+Work.11$cw11d317 <- NULL
+Work.11$cw11d530 <- NULL
+#Remove variables that were already included in other data sets
+Work.11$cw11d001 <- NULL
+Work.11$cw11d002 <- NULL
+Work.11$cw11d003 <- NULL
+#Remove categorical variables that are already included in the background data
+Work.11$cw11d525 <- NULL
+Work.11$cw11d005 <- NULL
+Work.11$cw11d008 <- NULL
+
+#Changing the variable type of the variables
+Work.11[,1:38] <- as.numeric(unlist(list(Work.11[,1:38])))
+
+#Set variables in which 2 corresponds to no, to 0
+Work.11$cw11d450[Work.11$cw11d450 == 2] <- 0
+
+#Set the data to the appropriate type
+Work.11$cw11d522 <- as.factor(Work.11$cw11d522)
+Work.11$cw11d523 <- as.factor(Work.11$cw11d523)
+Work.11$cw11d011 <- as.factor(Work.11$cw11d011)
+Work.11$cw11d012 <- as.factor(Work.11$cw11d012)
+Work.11$cw11d013 <- as.factor(Work.11$cw11d013)
+Work.11$cw11d014 <- as.factor(Work.11$cw11d014)
+Work.11$cw11d015 <- as.factor(Work.11$cw11d015)
+Work.11$cw11d016 <- as.factor(Work.11$cw11d016)
+Work.11$cw11d017 <- as.factor(Work.11$cw11d017)
+Work.11$cw11d018 <- as.factor(Work.11$cw11d018)
+Work.11$cw11d019 <- as.factor(Work.11$cw11d019)
+Work.11$cw11d020 <- as.factor(Work.11$cw11d020)
+Work.11$cw11d021 <- as.factor(Work.11$cw11d021)
+Work.11$cw11d022 <- as.factor(Work.11$cw11d022)
+Work.11$cw11d023 <- as.factor(Work.11$cw11d023)
+Work.11$cw11d024 <- as.factor(Work.11$cw11d024)
+Work.11$cw11d025 <- as.factor(Work.11$cw11d025)
+Work.11$cw11d026 <- as.factor(Work.11$cw11d026)
+Work.11$cw11d027 <- as.factor(Work.11$cw11d027)
+Work.11$cw11d028 <- as.factor(Work.11$cw11d028)
+Work.11$cw11d088 <- as.factor(Work.11$cw11d088)
+Work.11$cw11d089 <- as.factor(Work.11$cw11d089)
+Work.11$cw11d090 <- as.factor(Work.11$cw11d090)
+Work.11$cw11d091 <- as.factor(Work.11$cw11d091)
+Work.11$cw11d092 <- as.factor(Work.11$cw11d092)
+Work.11$cw11d093 <- as.factor(Work.11$cw11d093)
+Work.11$cw11d094 <- as.factor(Work.11$cw11d094)
+Work.11$cw11d095 <- as.factor(Work.11$cw11d095)
+Work.11$cw11d096 <- as.factor(Work.11$cw11d096)
+Work.11$cw11d097 <- as.factor(Work.11$cw11d097)
+Work.11$cw11d098 <- as.factor(Work.11$cw11d098)
+Work.11$cw11d099 <- as.factor(Work.11$cw11d099)
+Work.11$cw11d100 <- as.factor(Work.11$cw11d100)
+Work.11$cw11d101 <- as.factor(Work.11$cw11d101)
+Work.11$cw11d102 <- as.factor(Work.11$cw11d102)
+Work.11$cw11d450 <- as.factor(Work.11$cw11d450)
+
+#Setting survey questions that are on a scale as an ordered factor
+Work.11$cw11d004 <- ordered(Work.11$cw11d004)
+```
+
+Personality
+```{r}
+Personality.11 <- Personality.11[,1:188]
+
+#Remove irrelevant variable
+Personality.11$nohouse_encr <- NULL
+Personality.11$cp11d_m <- NULL
+Personality.11$cp11d196 <- NULL
+
+#Setting survey questions into the appropriate data type
+Personality.11[,1:185] <- as.numeric(unlist(list(Personality.11[,1:185])))
+
+#Set variables in which 2 corresponds to no, to 0
+Personality.11$cp11d136[Personality.11$cp11d136 == 2] <- 0
+Personality.11$cp11d137[Personality.11$cp11d137 == 2] <- 0
+Personality.11$cp11d138[Personality.11$cp11d138 == 2] <- 0
+Personality.11$cp11d139[Personality.11$cp11d139 == 2] <- 0
+Personality.11$cp11d140[Personality.11$cp11d140 == 2] <- 0
+Personality.11$cp11d141[Personality.11$cp11d141 == 2] <- 0
+Personality.11$cp11d142[Personality.11$cp11d142 == 2] <- 0
+Personality.11$cp11d143[Personality.11$cp11d143 == 2] <- 0
+Personality.11$cp11d144[Personality.11$cp11d144 == 2] <- 0
+Personality.11$cp11d145[Personality.11$cp11d145 == 2] <- 0
+
+#Set the appropriate data to as.factor()
+Personality.11$cp11d136 <- as.factor(Personality.11$cp11d136)
+Personality.11$cp11d137 <- as.factor(Personality.11$cp11d137)
+Personality.11$cp11d138 <- as.factor(Personality.11$cp11d138)
+Personality.11$cp11d139 <- as.factor(Personality.11$cp11d139)
+Personality.11$cp11d140 <- as.factor(Personality.11$cp11d140)
+Personality.11$cp11d141 <- as.factor(Personality.11$cp11d141)
+Personality.11$cp11d142 <- as.factor(Personality.11$cp11d142)
+Personality.11$cp11d143 <- as.factor(Personality.11$cp11d143)
+Personality.11$cp11d144 <- as.factor(Personality.11$cp11d144)
+Personality.11$cp11d145 <- as.factor(Personality.11$cp11d145)
+
+#Setting survey questions that are on a scale as an ordered factor
+Personality.11$cp11d001 <- ordered(Personality.11$cp11d001)
+Personality.11$cp11d002 <- ordered(Personality.11$cp11d002)
+Personality.11$cp11d003 <- ordered(Personality.11$cp11d003)
+Personality.11$cp11d004 <- ordered(Personality.11$cp11d004)
+Personality.11$cp11d005 <- ordered(Personality.11$cp11d005)
+Personality.11$cp11d006 <- ordered(Personality.11$cp11d006)
+Personality.11$cp11d007 <- ordered(Personality.11$cp11d007)
+Personality.11$cp11d008 <- ordered(Personality.11$cp11d008)
+Personality.11$cp11d009 <- ordered(Personality.11$cp11d009)
+Personality.11$cp11d010 <- ordered(Personality.11$cp11d010)
+
+Personality.11$cp11d011 <- ordered(Personality.11$cp11d011)
+Personality.11$cp11d012 <- ordered(Personality.11$cp11d012)
+Personality.11$cp11d013 <- ordered(Personality.11$cp11d013)
+Personality.11$cp11d014 <- ordered(Personality.11$cp11d014)
+Personality.11$cp11d015 <- ordered(Personality.11$cp11d015)
+Personality.11$cp11d016 <- ordered(Personality.11$cp11d016)
+Personality.11$cp11d017 <- ordered(Personality.11$cp11d017)
+Personality.11$cp11d018 <- ordered(Personality.11$cp11d018)
+Personality.11$cp11d019 <- ordered(Personality.11$cp11d019)
+Personality.11$cp11d020 <- ordered(Personality.11$cp11d020)
+
+Personality.11$cp11d021 <- ordered(Personality.11$cp11d021)
+Personality.11$cp11d022 <- ordered(Personality.11$cp11d022)
+Personality.11$cp11d023 <- ordered(Personality.11$cp11d023)
+Personality.11$cp11d024 <- ordered(Personality.11$cp11d024)
+Personality.11$cp11d025 <- ordered(Personality.11$cp11d025)
+Personality.11$cp11d026 <- ordered(Personality.11$cp11d026)
+Personality.11$cp11d027 <- ordered(Personality.11$cp11d027)
+Personality.11$cp11d028 <- ordered(Personality.11$cp11d028)
+Personality.11$cp11d029 <- ordered(Personality.11$cp11d029)
+Personality.11$cp11d030 <- ordered(Personality.11$cp11d030)
+
+Personality.11$cp11d031 <- ordered(Personality.11$cp11d031)
+Personality.11$cp11d032 <- ordered(Personality.11$cp11d032)
+Personality.11$cp11d033 <- ordered(Personality.11$cp11d033)
+Personality.11$cp11d034 <- ordered(Personality.11$cp11d034)
+Personality.11$cp11d035 <- ordered(Personality.11$cp11d035)
+Personality.11$cp11d036 <- ordered(Personality.11$cp11d036)
+Personality.11$cp11d037 <- ordered(Personality.11$cp11d037)
+Personality.11$cp11d038 <- ordered(Personality.11$cp11d038)
+Personality.11$cp11d039 <- ordered(Personality.11$cp11d039)
+Personality.11$cp11d040 <- ordered(Personality.11$cp11d040)
+
+Personality.11$cp11d041 <- ordered(Personality.11$cp11d041)
+Personality.11$cp11d042 <- ordered(Personality.11$cp11d042)
+Personality.11$cp11d043 <- ordered(Personality.11$cp11d043)
+Personality.11$cp11d044 <- ordered(Personality.11$cp11d044)
+Personality.11$cp11d045 <- ordered(Personality.11$cp11d045)
+Personality.11$cp11d046 <- ordered(Personality.11$cp11d046)
+Personality.11$cp11d047 <- ordered(Personality.11$cp11d047)
+Personality.11$cp11d048 <- ordered(Personality.11$cp11d048)
+Personality.11$cp11d049 <- ordered(Personality.11$cp11d049)
+Personality.11$cp11d050 <- ordered(Personality.11$cp11d050)
+
+Personality.11$cp11d051 <- ordered(Personality.11$cp11d051)
+Personality.11$cp11d052 <- ordered(Personality.11$cp11d052)
+Personality.11$cp11d053 <- ordered(Personality.11$cp11d053)
+Personality.11$cp11d054 <- ordered(Personality.11$cp11d054)
+Personality.11$cp11d055 <- ordered(Personality.11$cp11d055)
+Personality.11$cp11d056 <- ordered(Personality.11$cp11d056)
+Personality.11$cp11d057 <- ordered(Personality.11$cp11d057)
+Personality.11$cp11d058 <- ordered(Personality.11$cp11d058)
+Personality.11$cp11d059 <- ordered(Personality.11$cp11d059)
+Personality.11$cp11d060 <- ordered(Personality.11$cp11d060)
+
+Personality.11$cp11d061 <- ordered(Personality.11$cp11d061)
+Personality.11$cp11d062 <- ordered(Personality.11$cp11d062)
+Personality.11$cp11d063 <- ordered(Personality.11$cp11d063)
+Personality.11$cp11d064 <- ordered(Personality.11$cp11d064)
+Personality.11$cp11d065 <- ordered(Personality.11$cp11d065)
+Personality.11$cp11d066 <- ordered(Personality.11$cp11d066)
+Personality.11$cp11d067 <- ordered(Personality.11$cp11d067)
+Personality.11$cp11d068 <- ordered(Personality.11$cp11d068)
+Personality.11$cp11d069 <- ordered(Personality.11$cp11d069)
+Personality.11$cp11d070 <- ordered(Personality.11$cp11d070)
+
+Personality.11$cp11d071 <- ordered(Personality.11$cp11d071)
+Personality.11$cp11d072 <- ordered(Personality.11$cp11d072)
+Personality.11$cp11d073 <- ordered(Personality.11$cp11d073)
+Personality.11$cp11d074 <- ordered(Personality.11$cp11d074)
+Personality.11$cp11d075 <- ordered(Personality.11$cp11d075)
+Personality.11$cp11d076 <- ordered(Personality.11$cp11d076)
+Personality.11$cp11d077 <- ordered(Personality.11$cp11d077)
+Personality.11$cp11d078 <- ordered(Personality.11$cp11d078)
+Personality.11$cp11d079 <- ordered(Personality.11$cp11d079)
+Personality.11$cp11d080 <- ordered(Personality.11$cp11d080)
+
+Personality.11$cp11d081 <- ordered(Personality.11$cp11d081)
+Personality.11$cp11d082 <- ordered(Personality.11$cp11d082)
+Personality.11$cp11d083 <- ordered(Personality.11$cp11d083)
+Personality.11$cp11d084 <- ordered(Personality.11$cp11d084)
+Personality.11$cp11d085 <- ordered(Personality.11$cp11d085)
+Personality.11$cp11d086 <- ordered(Personality.11$cp11d086)
+Personality.11$cp11d087 <- ordered(Personality.11$cp11d087)
+Personality.11$cp11d088 <- ordered(Personality.11$cp11d088)
+Personality.11$cp11d089 <- ordered(Personality.11$cp11d089)
+Personality.11$cp11d090 <- ordered(Personality.11$cp11d090)
+
+Personality.11$cp11d091 <- ordered(Personality.11$cp11d091)
+Personality.11$cp11d092 <- ordered(Personality.11$cp11d092)
+Personality.11$cp11d093 <- ordered(Personality.11$cp11d093)
+Personality.11$cp11d094 <- ordered(Personality.11$cp11d094)
+Personality.11$cp11d095 <- ordered(Personality.11$cp11d095)
+Personality.11$cp11d096 <- ordered(Personality.11$cp11d096)
+Personality.11$cp11d097 <- ordered(Personality.11$cp11d097)
+Personality.11$cp11d098 <- ordered(Personality.11$cp11d098)
+Personality.11$cp11d099 <- ordered(Personality.11$cp11d099)
+Personality.11$cp11d100 <- ordered(Personality.11$cp11d100)
+
+Personality.11$cp11d101 <- ordered(Personality.11$cp11d101)
+Personality.11$cp11d102 <- ordered(Personality.11$cp11d102)
+Personality.11$cp11d103 <- ordered(Personality.11$cp11d103)
+Personality.11$cp11d104 <- ordered(Personality.11$cp11d104)
+Personality.11$cp11d105 <- ordered(Personality.11$cp11d105)
+Personality.11$cp11d106 <- ordered(Personality.11$cp11d106)
+Personality.11$cp11d107 <- ordered(Personality.11$cp11d107)
+Personality.11$cp11d108 <- ordered(Personality.11$cp11d108)
+Personality.11$cp11d109 <- ordered(Personality.11$cp11d109)
+Personality.11$cp11d110 <- ordered(Personality.11$cp11d110)
+
+Personality.11$cp11d111 <- ordered(Personality.11$cp11d111)
+Personality.11$cp11d112 <- ordered(Personality.11$cp11d112)
+Personality.11$cp11d113 <- ordered(Personality.11$cp11d113)
+Personality.11$cp11d114 <- ordered(Personality.11$cp11d114)
+Personality.11$cp11d115 <- ordered(Personality.11$cp11d115)
+Personality.11$cp11d116 <- ordered(Personality.11$cp11d116)
+Personality.11$cp11d117 <- ordered(Personality.11$cp11d117)
+Personality.11$cp11d118 <- ordered(Personality.11$cp11d118)
+Personality.11$cp11d119 <- ordered(Personality.11$cp11d119)
+Personality.11$cp11d120 <- ordered(Personality.11$cp11d120)
+
+Personality.11$cp11d121 <- ordered(Personality.11$cp11d121)
+Personality.11$cp11d122 <- ordered(Personality.11$cp11d122)
+Personality.11$cp11d123 <- ordered(Personality.11$cp11d123)
+Personality.11$cp11d124 <- ordered(Personality.11$cp11d124)
+Personality.11$cp11d125 <- ordered(Personality.11$cp11d125)
+Personality.11$cp11d126 <- ordered(Personality.11$cp11d126)
+Personality.11$cp11d127 <- ordered(Personality.11$cp11d127)
+Personality.11$cp11d128 <- ordered(Personality.11$cp11d128)
+Personality.11$cp11d129 <- ordered(Personality.11$cp11d129)
+Personality.11$cp11d130 <- ordered(Personality.11$cp11d130)
+
+Personality.11$cp11d131 <- ordered(Personality.11$cp11d131)
+Personality.11$cp11d132 <- ordered(Personality.11$cp11d132)
+Personality.11$cp11d133 <- ordered(Personality.11$cp11d133)
+Personality.11$cp11d134 <- ordered(Personality.11$cp11d134)
+Personality.11$cp11d135 <- ordered(Personality.11$cp11d135)
+Personality.11$cp11d194 <- ordered(Personality.11$cp11d194)
+
+Personality.11$cp11d146 <- ordered(Personality.11$cp11d146)
+Personality.11$cp11d147 <- ordered(Personality.11$cp11d147)
+Personality.11$cp11d148 <- ordered(Personality.11$cp11d148)
+Personality.11$cp11d149 <- ordered(Personality.11$cp11d149)
+Personality.11$cp11d150 <- ordered(Personality.11$cp11d150)
+
+Personality.11$cp11d151 <- ordered(Personality.11$cp11d151)
+Personality.11$cp11d152 <- ordered(Personality.11$cp11d152)
+Personality.11$cp11d153 <- ordered(Personality.11$cp11d153)
+Personality.11$cp11d154 <- ordered(Personality.11$cp11d154)
+Personality.11$cp11d155 <- ordered(Personality.11$cp11d155)
+Personality.11$cp11d156 <- ordered(Personality.11$cp11d156)
+Personality.11$cp11d157 <- ordered(Personality.11$cp11d157)
+Personality.11$cp11d158 <- ordered(Personality.11$cp11d158)
+Personality.11$cp11d159 <- ordered(Personality.11$cp11d159)
+Personality.11$cp11d160 <- ordered(Personality.11$cp11d160)
+
+Personality.11$cp11d161 <- ordered(Personality.11$cp11d161)
+Personality.11$cp11d162 <- ordered(Personality.11$cp11d162)
+Personality.11$cp11d163 <- ordered(Personality.11$cp11d163)
+Personality.11$cp11d164 <- ordered(Personality.11$cp11d164)
+Personality.11$cp11d165 <- ordered(Personality.11$cp11d165)
+Personality.11$cp11d166 <- ordered(Personality.11$cp11d166)
+Personality.11$cp11d167 <- ordered(Personality.11$cp11d167)
+Personality.11$cp11d168 <- ordered(Personality.11$cp11d168)
+Personality.11$cp11d169 <- ordered(Personality.11$cp11d169)
+Personality.11$cp11d170 <- ordered(Personality.11$cp11d170)
+
+Personality.11$cp11d171 <- ordered(Personality.11$cp11d171)
+Personality.11$cp11d172 <- ordered(Personality.11$cp11d172)
+Personality.11$cp11d173 <- ordered(Personality.11$cp11d173)
+Personality.11$cp11d174 <- ordered(Personality.11$cp11d174)
+Personality.11$cp11d175 <- ordered(Personality.11$cp11d175)
+Personality.11$cp11d176 <- ordered(Personality.11$cp11d176)
+Personality.11$cp11d177 <- ordered(Personality.11$cp11d177)
+Personality.11$cp11d178 <- ordered(Personality.11$cp11d178)
+Personality.11$cp11d179 <- ordered(Personality.11$cp11d179)
+Personality.11$cp11d180 <- ordered(Personality.11$cp11d180)
+
+Personality.11$cp11d181 <- ordered(Personality.11$cp11d181)
+Personality.11$cp11d182 <- ordered(Personality.11$cp11d182)
+Personality.11$cp11d183 <- ordered(Personality.11$cp11d183)
+```
+
+Integration
+```{r}
+Integration.11 <- Integration.11[,1:142]
+
+#Removing empty variables and redundant variables
+Integration.11$nohouse_encr <- NULL
+Integration.11$cs11d_m <- NULL
+Integration.11$cs11d065 <- NULL
+Integration.11$cs11d072 <- NULL
+Integration.11$cs11d078 <- NULL
+Integration.11$cs11d123 <- NULL
+Integration.11$cs11d322 <- NULL
+Integration.11$cs11d333 <- NULL
+Integration.11$cs11d344 <- NULL
+Integration.11$cs11d355 <- NULL
+Integration.11$cs11d366 <- NULL
+
+#Set the variables to the appropriate type
+Integration.11[,2:131] <- as.numeric(unlist(list(Integration.11[,2:131])))
+
+#Set variables in which 2 corresponds to no, to 0
+Integration.11$cs11d063[Integration.11$cs11d063 == 2] <- 0
+Integration.11$cs11d070[Integration.11$cs11d070 == 2] <- 0
+Integration.11$cs11d077[Integration.11$cs11d077 == 2] <- 0
+Integration.11$cs11d080[Integration.11$cs11d080 == 2] <- 0
+Integration.11$cs11d081[Integration.11$cs11d081 == 2] <- 0
+Integration.11$cs11d082[Integration.11$cs11d082 == 2] <- 0
+Integration.11$cs11d083[Integration.11$cs11d083 == 2] <- 0
+Integration.11$cs11d084[Integration.11$cs11d084 == 2] <- 0
+Integration.11$cs11d085[Integration.11$cs11d085 == 2] <- 0
+Integration.11$cs11d086[Integration.11$cs11d086 == 2] <- 0
+Integration.11$cs11d087[Integration.11$cs11d087 == 2] <- 0
+Integration.11$cs11d088[Integration.11$cs11d088 == 2] <- 0
+Integration.11$cs11d089[Integration.11$cs11d089 == 2] <- 0
+Integration.11$cs11d090[Integration.11$cs11d090 == 2] <- 0
+Integration.11$cs11d130[Integration.11$cs11d130 == 2] <- 0
+Integration.11$cs11d132[Integration.11$cs11d132 == 2] <- 0
+Integration.11$cs11d133[Integration.11$cs11d133 == 2] <- 0
+Integration.11$cs11d134[Integration.11$cs11d134 == 2] <- 0
+Integration.11$cs11d135[Integration.11$cs11d135 == 2] <- 0
+Integration.11$cs11d136[Integration.11$cs11d136 == 2] <- 0
+Integration.11$cs11d137[Integration.11$cs11d137 == 2] <- 0
+Integration.11$cs11d138[Integration.11$cs11d138 == 2] <- 0
+Integration.11$cs11d139[Integration.11$cs11d139 == 2] <- 0
+Integration.11$cs11d140[Integration.11$cs11d140 == 2] <- 0
+Integration.11$cs11d141[Integration.11$cs11d141 == 2] <- 0
+Integration.11$cs11d142[Integration.11$cs11d142 == 2] <- 0
+Integration.11$cs11d143[Integration.11$cs11d143 == 2] <- 0
+Integration.11$cs11d144[Integration.11$cs11d144 == 2] <- 0
+Integration.11$cs11d145[Integration.11$cs11d145 == 2] <- 0
+Integration.11$cs11d146[Integration.11$cs11d146 == 2] <- 0
+Integration.11$cs11d147[Integration.11$cs11d147 == 2] <- 0
+Integration.11$cs11d148[Integration.11$cs11d148 == 2] <- 0
+Integration.11$cs11d149[Integration.11$cs11d149 == 2] <- 0
+Integration.11$cs11d150[Integration.11$cs11d150 == 2] <- 0
+Integration.11$cs11d151[Integration.11$cs11d151 == 2] <- 0
+Integration.11$cs11d152[Integration.11$cs11d152 == 2] <- 0
+Integration.11$cs11d153[Integration.11$cs11d153 == 2] <- 0
+Integration.11$cs11d154[Integration.11$cs11d154 == 2] <- 0
+Integration.11$cs11d155[Integration.11$cs11d155 == 2] <- 0
+Integration.11$cs11d156[Integration.11$cs11d156 == 2] <- 0
+Integration.11$cs11d157[Integration.11$cs11d157 == 2] <- 0
+Integration.11$cs11d158[Integration.11$cs11d158 == 2] <- 0
+Integration.11$cs11d159[Integration.11$cs11d159 == 2] <- 0
+Integration.11$cs11d241[Integration.11$cs11d241 == 2] <- 0
+Integration.11$cs11d246[Integration.11$cs11d246 == 2] <- 0
+Integration.11$cs11d285[Integration.11$cs11d285 == 2] <- 0
+Integration.11$cs11d286[Integration.11$cs11d286 == 2] <- 0
+Integration.11$cs11d287[Integration.11$cs11d287 == 2] <- 0
+
+#Set the appropriate variables to as.factor()
+Integration.11$cs11d063 <- as.factor(Integration.11$cs11d063)
+Integration.11$cs11d070 <- as.factor(Integration.11$cs11d070)
+Integration.11$cs11d077 <- as.factor(Integration.11$cs11d077)
+Integration.11$cs11d080 <- as.factor(Integration.11$cs11d080)
+Integration.11$cs11d081 <- as.factor(Integration.11$cs11d081)
+Integration.11$cs11d082 <- as.factor(Integration.11$cs11d082)
+Integration.11$cs11d083 <- as.factor(Integration.11$cs11d083)
+Integration.11$cs11d084 <- as.factor(Integration.11$cs11d084)
+Integration.11$cs11d085 <- as.factor(Integration.11$cs11d085)
+Integration.11$cs11d086 <- as.factor(Integration.11$cs11d086)
+Integration.11$cs11d087 <- as.factor(Integration.11$cs11d087)
+Integration.11$cs11d088 <- as.factor(Integration.11$cs11d088)
+Integration.11$cs11d089 <- as.factor(Integration.11$cs11d089)
+Integration.11$cs11d090 <- as.factor(Integration.11$cs11d090)
+Integration.11$cs11d130 <- as.factor(Integration.11$cs11d130)
+Integration.11$cs11d132 <- as.factor(Integration.11$cs11d132)
+Integration.11$cs11d133 <- as.factor(Integration.11$cs11d133)
+Integration.11$cs11d134 <- as.factor(Integration.11$cs11d134)
+Integration.11$cs11d135 <- as.factor(Integration.11$cs11d135)
+Integration.11$cs11d136 <- as.factor(Integration.11$cs11d136)
+Integration.11$cs11d137 <- as.factor(Integration.11$cs11d137)
+Integration.11$cs11d138 <- as.factor(Integration.11$cs11d138)
+Integration.11$cs11d139 <- as.factor(Integration.11$cs11d139)
+Integration.11$cs11d140 <- as.factor(Integration.11$cs11d140)
+Integration.11$cs11d141 <- as.factor(Integration.11$cs11d141)
+Integration.11$cs11d142 <- as.factor(Integration.11$cs11d142)
+Integration.11$cs11d143 <- as.factor(Integration.11$cs11d143)
+Integration.11$cs11d144 <- as.factor(Integration.11$cs11d144)
+Integration.11$cs11d145 <- as.factor(Integration.11$cs11d145)
+Integration.11$cs11d146 <- as.factor(Integration.11$cs11d146)
+Integration.11$cs11d147 <- as.factor(Integration.11$cs11d147)
+Integration.11$cs11d148 <- as.factor(Integration.11$cs11d148)
+Integration.11$cs11d149 <- as.factor(Integration.11$cs11d149)
+Integration.11$cs11d150 <- as.factor(Integration.11$cs11d150)
+Integration.11$cs11d151 <- as.factor(Integration.11$cs11d151)
+Integration.11$cs11d152 <- as.factor(Integration.11$cs11d152)
+Integration.11$cs11d153 <- as.factor(Integration.11$cs11d153)
+Integration.11$cs11d154 <- as.factor(Integration.11$cs11d154)
+Integration.11$cs11d155 <- as.factor(Integration.11$cs11d155)
+Integration.11$cs11d156 <- as.factor(Integration.11$cs11d156)
+Integration.11$cs11d157 <- as.factor(Integration.11$cs11d157)
+Integration.11$cs11d158 <- as.factor(Integration.11$cs11d158)
+Integration.11$cs11d159 <- as.factor(Integration.11$cs11d159)
+Integration.11$cs11d241 <- as.factor(Integration.11$cs11d241)
+Integration.11$cs11d246 <- as.factor(Integration.11$cs11d246)
+Integration.11$cs11d285 <- as.factor(Integration.11$cs11d285)
+Integration.11$cs11d286 <- as.factor(Integration.11$cs11d286)
+Integration.11$cs11d287 <- as.factor(Integration.11$cs11d287)
+
+Integration.11$cs11d003 <- as.factor(Integration.11$cs11d003)
+Integration.11$cs11d004 <- as.factor(Integration.11$cs11d004)
+Integration.11$cs11d005 <- as.factor(Integration.11$cs11d005)
+Integration.11$cs11d006 <- as.factor(Integration.11$cs11d006)
+Integration.11$cs11d007 <- as.factor(Integration.11$cs11d007)
+Integration.11$cs11d008 <- as.factor(Integration.11$cs11d008)
+Integration.11$cs11d009 <- as.factor(Integration.11$cs11d009)
+Integration.11$cs11d010 <- as.factor(Integration.11$cs11d010)
+
+Integration.11$cs11d011 <- as.factor(Integration.11$cs11d011)
+Integration.11$cs11d012 <- as.factor(Integration.11$cs11d012)
+Integration.11$cs11d013 <- as.factor(Integration.11$cs11d013)
+Integration.11$cs11d014 <- as.factor(Integration.11$cs11d014)
+Integration.11$cs11d015 <- as.factor(Integration.11$cs11d015)
+Integration.11$cs11d016 <- as.factor(Integration.11$cs11d016)
+Integration.11$cs11d017 <- as.factor(Integration.11$cs11d017)
+Integration.11$cs11d018 <- as.factor(Integration.11$cs11d018)
+Integration.11$cs11d019 <- as.factor(Integration.11$cs11d019)
+Integration.11$cs11d020 <- as.factor(Integration.11$cs11d020)
+
+Integration.11$cs11d021 <- as.factor(Integration.11$cs11d021)
+Integration.11$cs11d022 <- as.factor(Integration.11$cs11d022)
+Integration.11$cs11d023 <- as.factor(Integration.11$cs11d023)
+Integration.11$cs11d024 <- as.factor(Integration.11$cs11d024)
+Integration.11$cs11d025 <- as.factor(Integration.11$cs11d025)
+Integration.11$cs11d026 <- as.factor(Integration.11$cs11d026)
+Integration.11$cs11d027 <- as.factor(Integration.11$cs11d027)
+Integration.11$cs11d028 <- as.factor(Integration.11$cs11d028)
+Integration.11$cs11d029 <- as.factor(Integration.11$cs11d029)
+Integration.11$cs11d030 <- as.factor(Integration.11$cs11d030)
+
+Integration.11$cs11d031 <- as.factor(Integration.11$cs11d031)
+Integration.11$cs11d032 <- as.factor(Integration.11$cs11d032)
+Integration.11$cs11d033 <- as.factor(Integration.11$cs11d033)
+Integration.11$cs11d034 <- as.factor(Integration.11$cs11d034)
+Integration.11$cs11d035 <- as.factor(Integration.11$cs11d035)
+Integration.11$cs11d036 <- as.factor(Integration.11$cs11d036)
+Integration.11$cs11d037 <- as.factor(Integration.11$cs11d037)
+Integration.11$cs11d038 <- as.factor(Integration.11$cs11d038)
+Integration.11$cs11d039 <- as.factor(Integration.11$cs11d039)
+Integration.11$cs11d040 <- as.factor(Integration.11$cs11d040)
+
+Integration.11$cs11d041 <- as.factor(Integration.11$cs11d041)
+Integration.11$cs11d042 <- as.factor(Integration.11$cs11d042)
+Integration.11$cs11d043 <- as.factor(Integration.11$cs11d043)
+Integration.11$cs11d044 <- as.factor(Integration.11$cs11d044)
+Integration.11$cs11d045 <- as.factor(Integration.11$cs11d045)
+Integration.11$cs11d046 <- as.factor(Integration.11$cs11d046)
+Integration.11$cs11d047 <- as.factor(Integration.11$cs11d047)
+Integration.11$cs11d048 <- as.factor(Integration.11$cs11d048)
+Integration.11$cs11d049 <- as.factor(Integration.11$cs11d049)
+Integration.11$cs11d050 <- as.factor(Integration.11$cs11d050)
+
+Integration.11$cs11d051 <- as.factor(Integration.11$cs11d051)
+Integration.11$cs11d052 <- as.factor(Integration.11$cs11d052)
+Integration.11$cs11d053 <- as.factor(Integration.11$cs11d053)
+Integration.11$cs11d054 <- as.factor(Integration.11$cs11d054)
+Integration.11$cs11d055 <- as.factor(Integration.11$cs11d055)
+Integration.11$cs11d056 <- as.factor(Integration.11$cs11d056)
+Integration.11$cs11d057 <- as.factor(Integration.11$cs11d057)
+Integration.11$cs11d058 <- as.factor(Integration.11$cs11d058)
+Integration.11$cs11d059 <- as.factor(Integration.11$cs11d059)
+Integration.11$cs11d060 <- as.factor(Integration.11$cs11d060)
+
+Integration.11$cs11d061 <- as.factor(Integration.11$cs11d061)
+Integration.11$cs11d062 <- as.factor(Integration.11$cs11d062)
+
+Integration.11$cs11d294 <- as.factor(Integration.11$cs11d294)
+Integration.11$cs11d295 <- as.factor(Integration.11$cs11d295)
+Integration.11$cs11d296 <- as.factor(Integration.11$cs11d296)
+Integration.11$cs11d297 <- as.factor(Integration.11$cs11d297)
+Integration.11$cs11d298 <- as.factor(Integration.11$cs11d298)
+
+#Creating dummies for the variables for which that is necessary
+#for how often someone goes on a holiday, "not once" is taken as the base group
+Integration.11$cs11d103_2 <- as.factor(ifelse(Integration.11$cs11d103 == 2, 1, 0))
+Integration.11$cs11d103_3 <- as.factor(ifelse(Integration.11$cs11d103 == 3, 1, 0))
+Integration.11$cs11d103_4 <- as.factor(ifelse(Integration.11$cs11d103 == 4, 1, 0))
+Integration.11$cs11d103_5 <- as.factor(ifelse(Integration.11$cs11d103 == 5, 1, 0))
+Integration.11$cs11d103_6 <- as.factor(ifelse(Integration.11$cs11d103 == 6, 1, 0))
+Integration.11$cs11d103 <- NULL
+
+#for feeling a sense of emptiness, yes is taken as the base group
+Integration.11$cs11d284_2 <- as.factor(ifelse(Integration.11$cs11d284 == 2, 1, 0))
+Integration.11$cs11d284_3 <- as.factor(ifelse(Integration.11$cs11d284 == 3, 1, 0))
+Integration.11$cs11d284 <- NULL
+
+#for  missing people around them, yes is taken as the base group
+Integration.11$cs11d288_2 <- as.factor(ifelse(Integration.11$cs11d288 == 2, 1, 0))
+Integration.11$cs11d288_3 <- as.factor(ifelse(Integration.11$cs11d288 == 3, 1, 0))
+Integration.11$cs11d288 <- NULL
+
+#for feeling deserted, yes is taken as the base group
+Integration.11$cs11d289_2 <- as.factor(ifelse(Integration.11$cs11d289 == 2, 1, 0))
+Integration.11$cs11d289_3 <- as.factor(ifelse(Integration.11$cs11d289 == 3, 1, 0))
+Integration.11$cs11d289 <- NULL
+
+#for the amount of time spending with family, "almost every day" is taken as the base group
+Integration.11$cs11d290_2 <- as.factor(ifelse(Integration.11$cs11d290 == 2, 1, 0))
+Integration.11$cs11d290_3 <- as.factor(ifelse(Integration.11$cs11d290 == 3, 1, 0))
+Integration.11$cs11d290_4 <- as.factor(ifelse(Integration.11$cs11d290 == 4, 1, 0))
+Integration.11$cs11d290_5 <- as.factor(ifelse(Integration.11$cs11d290 == 5, 1, 0))
+Integration.11$cs11d290_6 <- as.factor(ifelse(Integration.11$cs11d290 == 6, 1, 0))
+Integration.11$cs11d290_7 <- as.factor(ifelse(Integration.11$cs11d290 == 7, 1, 0))
+Integration.11$cs11d290_8 <- as.factor(ifelse(Integration.11$cs11d290 == 8, 1, 0))
+Integration.11$cs11d290_9 <- as.factor(ifelse(Integration.11$cs11d290 == 9, 1, 0))
+Integration.11$cs11d290 <- NULL
+
+#for the amount of time spending with friends outside your neighborhood, "almost every day" is taken as the base group
+Integration.11$cs11d292_2 <- as.factor(ifelse(Integration.11$cs11d292 == 2, 1, 0))
+Integration.11$cs11d292_3 <- as.factor(ifelse(Integration.11$cs11d292 == 3, 1, 0))
+Integration.11$cs11d292_4 <- as.factor(ifelse(Integration.11$cs11d292 == 4, 1, 0))
+Integration.11$cs11d292_5 <- as.factor(ifelse(Integration.11$cs11d292 == 5, 1, 0))
+Integration.11$cs11d292_6 <- as.factor(ifelse(Integration.11$cs11d292 == 6, 1, 0))
+Integration.11$cs11d292_7 <- as.factor(ifelse(Integration.11$cs11d292 == 7, 1, 0))
+Integration.11$cs11d292_8 <- as.factor(ifelse(Integration.11$cs11d292 == 8, 1, 0))
+Integration.11$cs11d292_9 <- as.factor(ifelse(Integration.11$cs11d292 == 9, 1, 0))
+Integration.11$cs11d292 <- NULL
+
+#for the amount of time spending vsiting a cafe or bar, "almost every day" is taken as the base group
+Integration.11$cs11d293_2 <- as.factor(ifelse(Integration.11$cs11d293 == 2, 1, 0))
+Integration.11$cs11d293_3 <- as.factor(ifelse(Integration.11$cs11d293 == 3, 1, 0))
+Integration.11$cs11d293_4 <- as.factor(ifelse(Integration.11$cs11d293 == 4, 1, 0))
+Integration.11$cs11d293_5 <- as.factor(ifelse(Integration.11$cs11d293 == 5, 1, 0))
+Integration.11$cs11d293_6 <- as.factor(ifelse(Integration.11$cs11d293 == 6, 1, 0))
+Integration.11$cs11d293_7 <- as.factor(ifelse(Integration.11$cs11d293 == 7, 1, 0))
+Integration.11$cs11d293_8 <- as.factor(ifelse(Integration.11$cs11d293 == 8, 1, 0))
+Integration.11$cs11d293_9 <- as.factor(ifelse(Integration.11$cs11d293 == 9, 1, 0))
+Integration.11$cs11d293 <- NULL
+
+#Setting survey questions that are on a scale as an ordered factor
+Integration.11$cs11d001 <- ordered(Integration.11$cs11d001)
+Integration.11$cs11d002 <- ordered(Integration.11$cs11d002)
+Integration.11$cs11d102 <- ordered(Integration.11$cs11d102)
+Integration.11$cs11d104 <- ordered(Integration.11$cs11d104)
+Integration.11$cs11d283 <- ordered(Integration.11$cs11d283)
+```
+
+Religion and Ethnicity
+```{r}
+Demographics.11 <- Demographics.11[,1:49]
+
+#Removing empty variables and redundant variables
+Demographics.11$nohouse_encr <- NULL
+Demographics.11$cr11d_m <- NULL
+Demographics.11$cr11d001 <- NULL
+Demographics.11$cr11d006 <- NULL
+Demographics.11$cr11d007 <- NULL
+Demographics.11$cr11d008 <- NULL
+Demographics.11$cr11d009 <- NULL
+Demographics.11$cr11d010 <- NULL
+Demographics.11$cr11d016 <- NULL
+Demographics.11$cr11d017 <- NULL
+Demographics.11$cr11d018 <- NULL
+Demographics.11$cr11d019 <- NULL
+Demographics.11$cr11d020 <- NULL
+Demographics.11$cr11d025 <- NULL
+Demographics.11$cr11d026 <- NULL
+Demographics.11$cr11d027 <- NULL
+Demographics.11$cr11d028 <- NULL
+Demographics.11$cr11d029 <- NULL
+Demographics.11$cr11d088 <- NULL
+Demographics.11$cr11d091 <- NULL
+Demographics.11$cr11d098 <- NULL
+
+#Set variables in which 2 corresponds to no, to 0
+Demographics.11$cr11d002[Demographics.11$cr11d002 == 2] <- 0
+Demographics.11$cr11d012[Demographics.11$cr11d012 == 2] <- 0
+## question cr11d089 is changed so that it can be interpreted as: Do you genrally speak Dutch at home: 0 == no, 1 == yes
+Demographics.11$cr11d089[Demographics.11$cr11d089 == 2] <- 0
+
+#Set the appropriate variables to as.factor()
+Demographics.11$cr11d002 <- as.factor(Demographics.11$cr11d002)
+Demographics.11$cr11d012 <- as.factor(Demographics.11$cr11d012)
+Demographics.11$cr11d079 <- as.factor(Demographics.11$cr11d079)
+Demographics.11$cr11d080 <- as.factor(Demographics.11$cr11d080)
+Demographics.11$cr11d081 <- as.factor(Demographics.11$cr11d081)
+Demographics.11$cr11d082 <- as.factor(Demographics.11$cr11d081)
+Demographics.11$cr11d083 <- as.factor(Demographics.11$cr11d083)
+Demographics.11$cr11d084 <- as.factor(Demographics.11$cr11d084)
+Demographics.11$cr11d085 <- as.factor(Demographics.11$cr11d085)
+Demographics.11$cr11d086 <- as.factor(Demographics.11$cr11d086)
+Demographics.11$cr11d087 <- as.factor(Demographics.11$cr11d087)
+Demographics.11$cr11d089 <- as.factor(Demographics.11$cr11d089)
+
+#Creating dummies for the variables for which that is necessary
+#for the amount of time parents attended religious gatherings, "every day" is taken as the base group
+Demographics.11$cr11d011_2 <- as.factor(ifelse(Demographics.11$cr11d011 == 2, 1, 0))
+Demographics.11$cr11d011_3 <- as.factor(ifelse(Demographics.11$cr11d011 == 3, 1, 0))
+Demographics.11$cr11d011_4 <- as.factor(ifelse(Demographics.11$cr11d011 == 4, 1, 0))
+Demographics.11$cr11d011_5 <- as.factor(ifelse(Demographics.11$cr11d011 == 5, 1, 0))
+Demographics.11$cr11d011_6 <- as.factor(ifelse(Demographics.11$cr11d011 == 6, 1, 0))
+Demographics.11$cr11d011_7 <- as.factor(ifelse(Demographics.11$cr11d011 == 7, 1, 0))
+Demographics.11$cr11d011 <- NULL
+
+#for the respondent's view of God, "I do not believe in God" is taken as the base group
+Demographics.11$cr11d030_2 <- as.factor(ifelse(Demographics.11$cr11d030 == 2, 1, 0))
+Demographics.11$cr11d030_3 <- as.factor(ifelse(Demographics.11$cr11d030 == 3, 1, 0))
+Demographics.11$cr11d030_4 <- as.factor(ifelse(Demographics.11$cr11d030 == 4, 1, 0))
+Demographics.11$cr11d030_5 <- as.factor(ifelse(Demographics.11$cr11d030 == 5, 1, 0))
+Demographics.11$cr11d030_6 <- as.factor(ifelse(Demographics.11$cr11d030 == 6, 1, 0))
+Demographics.11$cr11d030 <- NULL
+
+#for the amount of time attending religious gatherings, "every day" is taken as the base group
+Demographics.11$cr11d041_2 <- as.factor(ifelse(Demographics.11$cr11d041 == 2, 1, 0))
+Demographics.11$cr11d041_3 <- as.factor(ifelse(Demographics.11$cr11d041 == 3, 1, 0))
+Demographics.11$cr11d041_4 <- as.factor(ifelse(Demographics.11$cr11d041 == 4, 1, 0))
+Demographics.11$cr11d041_5 <- as.factor(ifelse(Demographics.11$cr11d041 == 5, 1, 0))
+Demographics.11$cr11d041_6 <- as.factor(ifelse(Demographics.11$cr11d041 == 6, 1, 0))
+Demographics.11$cr11d041_7 <- as.factor(ifelse(Demographics.11$cr11d041 == 7, 1, 0))
+Demographics.11$cr11d041 <- NULL
+
+#for the amount of time parying, "every day" is taken as the base group
+Demographics.11$cr11d042_2 <- as.factor(ifelse(Demographics.11$cr11d042 == 2, 1, 0))
+Demographics.11$cr11d042_3 <- as.factor(ifelse(Demographics.11$cr11d042 == 3, 1, 0))
+Demographics.11$cr11d042_4 <- as.factor(ifelse(Demographics.11$cr11d042 == 4, 1, 0))
+Demographics.11$cr11d042_5 <- as.factor(ifelse(Demographics.11$cr11d042 == 5, 1, 0))
+Demographics.11$cr11d042_6 <- as.factor(ifelse(Demographics.11$cr11d042 == 6, 1, 0))
+Demographics.11$cr11d042_7 <- as.factor(ifelse(Demographics.11$cr11d042 == 7, 1, 0))
+Demographics.11$cr11d042 <- NULL
+
+#for the amount of time spoken in a dialect, "yes, daily" is taken as the base group
+Demographics.11$cr11d092_2 <- as.factor(ifelse(Demographics.11$cr11d092 == 2, 1, 0))
+Demographics.11$cr11d092_3 <- as.factor(ifelse(Demographics.11$cr11d092 == 3, 1, 0))
+Demographics.11$cr11d092_4 <- as.factor(ifelse(Demographics.11$cr11d092 == 4, 1, 0))
+Demographics.11$cr11d092 <- NULL
+
+#for the amount of time spoken Dutch by respondents with their partner, "yes, often/always" is taken as the base group
+Demographics.11$cr11d093_2 <- as.factor(ifelse(Demographics.11$cr11d093 == 2, 1, 0))
+Demographics.11$cr11d093_3 <- as.factor(ifelse(Demographics.11$cr11d093 == 3, 1, 0))
+Demographics.11$cr11d093_4 <- as.factor(ifelse(Demographics.11$cr11d093 == 4, 1, 0))
+Demographics.11$cr11d093 <- NULL
+
+#for the amount of time spoken Dutch by respondents with their children, "yes, often/always" is taken as the base group
+Demographics.11$cr11d094_2 <- as.factor(ifelse(Demographics.11$cr11d094 == 2, 1, 0))
+Demographics.11$cr11d094_3 <- as.factor(ifelse(Demographics.11$cr11d094 == 3, 1, 0))
+Demographics.11$cr11d094_4 <- as.factor(ifelse(Demographics.11$cr11d094 == 4, 1, 0))
+Demographics.11$cr11d094 <- NULL
+
+#for the amount of time spoken Dutch by respondents with their friends and acquaintances, "yes, often/always" is taken as the base group
+Demographics.11$cr11d095_2 <- as.factor(ifelse(Demographics.11$cr11d095 == 2, 1, 0))
+Demographics.11$cr11d095_3 <- as.factor(ifelse(Demographics.11$cr11d095 == 3, 1, 0))
+Demographics.11$cr11d095_4 <- as.factor(ifelse(Demographics.11$cr11d095 == 4, 1, 0))
+Demographics.11$cr11d095 <- NULL
+
+#for how much people struggle speaking Dutch, "yes, often have trouble/do not speak Dutch" is taken as the base group
+Demographics.11$cr11d097_2 <- as.factor(ifelse(Demographics.11$cr11d097 == 2, 1, 0))
+Demographics.11$cr11d097_3 <- as.factor(ifelse(Demographics.11$cr11d097 == 3, 1, 0))
+Demographics.11$cr11d097 <- NULL
+
+#for the question: "a wive has to do what her husband asks of her", "yes" is taken as the base group
+Demographics.11$cr11d101_2 <- as.factor(ifelse(Demographics.11$cr11d101 == 2, 1, 0))
+Demographics.11$cr11d101_3 <- as.factor(ifelse(Demographics.11$cr11d101 == 3, 1, 0))
+Demographics.11$cr11d101_4 <- as.factor(ifelse(Demographics.11$cr11d101 == 4, 1, 0))
+Demographics.11$cr11d101 <- NULL
+
+#for the question: "does a husband have to do what his wife asks of him", "yes" is taken as the base group
+Demographics.11$cr11d102_2 <- as.factor(ifelse(Demographics.11$cr11d102 == 2, 1, 0))
+Demographics.11$cr11d102_3 <- as.factor(ifelse(Demographics.11$cr11d102 == 3, 1, 0))
+Demographics.11$cr11d102_4 <- as.factor(ifelse(Demographics.11$cr11d102 == 4, 1, 0))
+Demographics.11$cr11d102 <- NULL
+
+#for the question: "should women enter marriage as a virgin", "yes" is taken as the base group
+Demographics.11$cr11d103_2 <- as.factor(ifelse(Demographics.11$cr11d103 == 2, 1, 0))
+Demographics.11$cr11d103_3 <- as.factor(ifelse(Demographics.11$cr11d103 == 3, 1, 0))
+Demographics.11$cr11d103_4 <- as.factor(ifelse(Demographics.11$cr11d103 == 4, 1, 0))
+Demographics.11$cr11d103 <- NULL
+
+#for the question: "should men enter marriage as a virgin", "yes" is taken as the base group
+Demographics.11$cr11d104_2 <- as.factor(ifelse(Demographics.11$cr11d104 == 2, 1, 0))
+Demographics.11$cr11d104_3 <- as.factor(ifelse(Demographics.11$cr11d104 == 3, 1, 0))
+Demographics.11$cr11d104_4 <- as.factor(ifelse(Demographics.11$cr11d104 == 4, 1, 0))
+Demographics.11$cr11d104 <- NULL
+
+#for the question: "do you consider it good that abortion is permitted", "yes" is taken as the base group
+Demographics.11$cr11d105_2 <- as.factor(ifelse(Demographics.11$cr11d105 == 2, 1, 0))
+Demographics.11$cr11d105_3 <- as.factor(ifelse(Demographics.11$cr11d105 == 3, 1, 0))
+Demographics.11$cr11d105_4 <- as.factor(ifelse(Demographics.11$cr11d105 == 4, 1, 0))
+Demographics.11$cr11d105 <- NULL
+
+#for the question: "do you ever meditate", "yes" is taken as the base group
+Demographics.11$cr11d108_2 <- as.factor(ifelse(Demographics.11$cr11d108 == 2, 1, 0))
+Demographics.11$cr11d108_3 <- as.factor(ifelse(Demographics.11$cr11d108 == 3, 1, 0))
+Demographics.11$cr11d108_4 <- as.factor(ifelse(Demographics.11$cr11d108 == 4, 1, 0))
+Demographics.11$cr11d108 <- NULL
+```
+
+
+
+#Organizing the Background variables of 2011
+```{r}
+#Deleting redundant variables or variables that contain the same information as other variables
+Background.11$wave <- NULL
+Background.11$nohouse_encr <- NULL
+Background.11$gebjaar <- NULL
+Background.11$lftdcat <- NULL
+Background.11$lftdhhh <- NULL
+Background.11$oplzon <- NULL
+Background.11$doetmee <- NULL
+Background.11$simpc <- NULL
+Background.11$oplcat <- NULL
+Background.11$partner <- NULL
+
+#Doing the above for the variables that specify income
+Background.11$brutoink <- NULL
+Background.11$nettoink <- NULL
+Background.11$netinc <- NULL
+Background.11$brutocat <- NULL
+Background.11$nettocat <- NULL
+Background.11$brutoink_f <- NULL
+Background.11$brutohh_f <- NULL
+Background.11$nettohh_f <- NULL
+```
+
+
+Background
+
+Creating dummies for gender
+```{r}
+#Male is taken as the base group
+Background.11$geslacht_2 <- as.factor(ifelse(Background.11$geslacht == 2, 1, 0))
+Background.11$geslacht <- NULL
+```
+
+Creating dummies for position in household
+```{r}
+#Household head is taken as the base group
+Background.11$positie_2 <- as.factor(ifelse(Background.11$positie == 2, 1, 0))
+Background.11$positie_3 <- as.factor(ifelse(Background.11$positie == 3, 1, 0))
+Background.11$positie_4 <- as.factor(ifelse(Background.11$positie == 4, 1, 0))
+Background.11$positie_5 <- as.factor(ifelse(Background.11$positie == 5, 1, 0))
+Background.11$positie_6 <- as.factor(ifelse(Background.11$positie == 6, 1, 0))
+Background.11$positie_7 <- as.factor(ifelse(Background.11$positie == 7, 1, 0))
+Background.11$positie_9 <- as.factor(ifelse(Background.11$positie == 9, 1, 0))
+Background.11$positie <- NULL
+```
+
+Creating dummies for number of household members
+```{r}
+#One household member is taken as the base group
+Background.11$aantalhh_2 <- as.factor(ifelse(Background.11$aantalhh == 2, 1, 0))
+Background.11$aantalhh_3 <- as.factor(ifelse(Background.11$aantalhh == 3, 1, 0))
+Background.11$aantalhh_4 <- as.factor(ifelse(Background.11$aantalhh == 4, 1, 0))
+Background.11$aantalhh_5 <- as.factor(ifelse(Background.11$aantalhh == 5, 1, 0))
+Background.11$aantalhh_6 <- as.factor(ifelse(Background.11$aantalhh == 6, 1, 0))
+Background.11$aantalhh_7 <- as.factor(ifelse(Background.11$aantalhh == 7, 1, 0))
+Background.11$aantalhh_8 <- as.factor(ifelse(Background.11$aantalhh == 8, 1, 0))
+Background.11$aantalhh_9 <- as.factor(ifelse(Background.11$aantalhh == 9, 1, 0))
+Background.11$aantalhh <- NULL
+```
+
+Creating dummies for number of children in the household of the respondent
+```{r}
+#None is taken as the base group
+Background.11$aantalki_2 <- as.factor(ifelse(Background.11$aantalki == 2, 1, 0))
+Background.11$aantalki_3 <- as.factor(ifelse(Background.11$aantalki == 3, 1, 0))
+Background.11$aantalki_4 <- as.factor(ifelse(Background.11$aantalki == 4, 1, 0))
+Background.11$aantalki_5 <- as.factor(ifelse(Background.11$aantalki == 5, 1, 0))
+Background.11$aantalki_6 <- as.factor(ifelse(Background.11$aantalki == 6, 1, 0))
+Background.11$aantalki_7 <- as.factor(ifelse(Background.11$aantalki == 7, 1, 0))
+Background.11$aantalki_8 <- as.factor(ifelse(Background.11$aantalki == 8, 1, 0))
+Background.11$aantalki_9 <- as.factor(ifelse(Background.11$aantalki == 9, 1, 0))
+Background.11$aantalki <- NULL
+```
+
+Creating dummies for civil status of respondents
+```{r}
+#Married is taken as the base group
+Background.11$burgstat_2 <- as.factor(ifelse(Background.11$burgstat == 2, 1, 0))
+Background.11$burgstat_3 <- as.factor(ifelse(Background.11$burgstat == 3, 1, 0))
+Background.11$burgstat_4 <- as.factor(ifelse(Background.11$burgstat == 4, 1, 0))
+Background.11$burgstat_5 <- as.factor(ifelse(Background.11$burgstat == 5, 1, 0))
+Background.11$burgstat <- NULL
+```
+
+Creating dummies for the domestic situation of respondents
+```{r}
+#The civil status of being single is taken as the base group
+Background.11$woonvorm_2 <- as.factor(ifelse(Background.11$woonvorm == 2, 1, 0))
+Background.11$woonvorm_3 <- as.factor(ifelse(Background.11$woonvorm == 3, 1, 0))
+Background.11$woonvorm_4 <- as.factor(ifelse(Background.11$woonvorm == 4, 1, 0))
+Background.11$woonvorm_5 <- as.factor(ifelse(Background.11$woonvorm == 5, 1, 0))
+Background.11$woonvorm <- NULL
+```
+
+Creating dummies for the dwelling that the respondent occupies
+```{r}
+#Self-owned swelling is taken as the base group
+Background.11$woning_2 <- as.factor(ifelse(Background.11$woning == 2, 1, 0))
+Background.11$woning_3 <- as.factor(ifelse(Background.11$woning == 3, 1, 0))
+Background.11$woning_4 <- as.factor(ifelse(Background.11$woning == 4, 1, 0))
+Background.11$woning_5 <- as.factor(ifelse(Background.11$woning == 9, 1, 0))
+Background.11$woning <- NULL
+```
+
+Creating dummies for the urban character that the respondent lives in
+```{r}
+#An extremely urban living environemnt is taken as the base group
+Background.11$sted_2 <- as.factor(ifelse(Background.11$sted == 2, 1, 0))
+Background.11$sted_3 <- as.factor(ifelse(Background.11$sted == 3, 1, 0))
+Background.11$sted_4 <- as.factor(ifelse(Background.11$sted == 4, 1, 0))
+Background.11$sted_5 <- as.factor(ifelse(Background.11$sted == 5, 1, 0))
+Background.11$sted <- NULL
+```
+
+Creating dummies for the primary occupation the the respondent
+```{r}
+#The primary occupation being of paid employment is taken as the base group
+Background.11$belbezig_2 <- as.factor(ifelse(Background.11$belbezig == 2, 1, 0))
+Background.11$belbezig_3 <- as.factor(ifelse(Background.11$belbezig == 3, 1, 0))
+Background.11$belbezig_4 <- as.factor(ifelse(Background.11$belbezig == 4, 1, 0))
+Background.11$belbezig_5 <- as.factor(ifelse(Background.11$belbezig == 5, 1, 0))
+Background.11$belbezig_6 <- as.factor(ifelse(Background.11$belbezig == 6, 1, 0))
+Background.11$belbezig_7 <- as.factor(ifelse(Background.11$belbezig == 7, 1, 0))
+Background.11$belbezig_8 <- as.factor(ifelse(Background.11$belbezig == 8, 1, 0))
+Background.11$belbezig_9 <- as.factor(ifelse(Background.11$belbezig == 9, 1, 0))
+Background.11$belbezig_10 <- as.factor(ifelse(Background.11$belbezig == 10, 1, 0))
+Background.11$belbezig_11 <- as.factor(ifelse(Background.11$belbezig == 11, 1, 0))
+Background.11$belbezig_12 <- as.factor(ifelse(Background.11$belbezig == 12, 1, 0))
+Background.11$belbezig_13 <- as.factor(ifelse(Background.11$belbezig == 13, 1, 0))
+Background.11$belbezig_14 <- as.factor(ifelse(Background.11$belbezig == 14, 1, 0))
+Background.11$belbezig <- NULL
+```
+
+Creating dummies for the education of the respondents
+```{r}
+#Primary school as the highest obtained level of education is taken as the base group
+Background.11$oplmet_2 <- as.factor(ifelse(Background.11$oplmet == 2, 1, 0))
+Background.11$oplmet_3 <- as.factor(ifelse(Background.11$oplmet == 3, 1, 0))
+Background.11$oplmet_4 <- as.factor(ifelse(Background.11$oplmet == 4, 1, 0))
+Background.11$oplmet_5 <- as.factor(ifelse(Background.11$oplmet == 5, 1, 0))
+Background.11$oplmet_6 <- as.factor(ifelse(Background.11$oplmet == 6, 1, 0))
+Background.11$oplmet_7 <- as.factor(ifelse(Background.11$oplmet == 7, 1, 0))
+Background.11$oplmet_8 <- as.factor(ifelse(Background.11$oplmet == 8, 1, 0))
+Background.11$oplmet_9 <- as.factor(ifelse(Background.11$oplmet == 9, 1, 0))
+Background.11$oplmet <- NULL
+```
+
+Creating dummies for the ethnicity/immigration status of respondents
+
+3850 respondents did not answer this question. But considering how insightful it could be for the analysis, the missing values of this variable are coded into a unqiue dummy which describes people who did not disclose their ethicity/immigration status
+```{r}
+#Specyfing NA's as 999
+Background.11$herkomstgroep[is.na(Background.11$herkomstgroep)] <- 999
+
+#Ethnically Dutch is taken as the base group
+Background.11$herkomstgroep_101 <- as.factor(ifelse(Background.11$herkomstgroep == 101, 1, 0))
+Background.11$herkomstgroep_102 <- as.factor(ifelse(Background.11$herkomstgroep == 102, 1, 0))
+Background.11$herkomstgroep_202 <- as.factor(ifelse(Background.11$herkomstgroep == 201, 1, 0))
+Background.11$herkomstgroep_202 <- as.factor(ifelse(Background.11$herkomstgroep == 202, 1, 0))
+Background.11$herkomstgroep_999 <- as.factor(ifelse(Background.11$herkomstgroep == 999, 1, 0))
+Background.11$herkomstgroep <- NULL
+```
+
+#Organizing the data on financial literacy
+```{r}
+F.Literacy.11 <- F.Literacy.11[,1:8]
+
+#Removing the variable that captures how well people THINK their financial knowledge is
+F.Literacy.11$ew11a001 <- NULL
+
+#Removing redundant variables
+F.Literacy.11$nohouse_encr <- NULL
+F.Literacy.11$ew11a_m <- NULL
+```
+
+#Defining financial literacy
+
+For missing values in the questions the respondents were asked, this was defined as a wrong answer/did not answer. This is in line with Annamaria Lusardi who gave people the option not to answer the questions that aim to measure financial literacy
+```{r}
+#Specyfing NA's as 0
+F.Literacy.11$ew11a002[is.na(F.Literacy.11$ew11a002)] <- 0
+F.Literacy.11$ew11a003[is.na(F.Literacy.11$ew11a003)] <- 0
+F.Literacy.11$ew11a004[is.na(F.Literacy.11$ew11a004)] <- 0
+F.Literacy.11$ew11a005[is.na(F.Literacy.11$ew11a005)] <- 0
+
+#Specifying whether the respondents got the question right or wrong
+F.Literacy.11$Q1_Correct <- ifelse(F.Literacy.11$ew11a002 == 1, 1, 0)
+F.Literacy.11$Q2_Correct <- ifelse(F.Literacy.11$ew11a003 == 3, 1, 0)
+F.Literacy.11$Q3_Correct <- ifelse(F.Literacy.11$ew11a004 == 2, 1, 0)
+F.Literacy.11$Q4_Correct <- ifelse(F.Literacy.11$ew11a005 == 2, 1, 0)
+
+#Specifying how many of the questions the respondents got right
+F.Literacy.11$QS_Correct <- F.Literacy.11$Q1_Correct + F.Literacy.11$Q2_Correct + F.Literacy.11$Q3_Correct + F.Literacy.11$Q4_Correct
+
+#Specifying if the respondent is financial literate, which is when they have 3 out of 4 correct answers
+F.Literacy.11$Financially_literate <- ifelse(F.Literacy.11$QS_Correct >= 3, 1, 0)
+```
+
+Plot of the distribution of financial literacy
+```{r}
+ggplot(F.Literacy.11, aes(Financially_literate)) + geom_bar()
+```
+
+As can be seen from the plot there are more people financially illiterate under this definition than there are financially literate respondents. However, this distribution is not extremely skewed.
+
+
+#Define the (multiple) dependent variables for the analyses
+
+Defining portfolio diversification, and ability to collect cash-flows from that diversification.
+
+This is done by combining the number of different asset classes respondents have (in the Asset.12 Data), with the number of sources people get cash from (Income.12). 
+```{r}
+Portfolio.Data <- merge(Asset.12, Income.12, by = "nomem_encr")
+Portfolio.Data <- na.omit(Portfolio.Data)
+```
+
+
+```{r}
+Portfolio.Data$Diversification <- Portfolio.Data$ca12c078 + Portfolio.Data$ca12c005 + Portfolio.Data$ca12c006 + Portfolio.Data$ca12c007 +
+  Portfolio.Data$ca12c008 + Portfolio.Data$ca12c011 + Portfolio.Data$ca12c079 + Portfolio.Data$ci12e144 + Portfolio.Data$ci12e152 +
+  Portfolio.Data$ci12e153 + Portfolio.Data$ci12e177
+
+#Diversification can be square root transformed with the below function
+#Portfolio.Data$Diversification <- sqrt(Portfolio.Data$Diversification)
+```
+
+Plot of the distribution of financial diversification
+```{r}
+ggplot(Portfolio.Data, aes(Diversification)) + geom_bar()
+```
+
+
+#Merge the datasets
+```{r}
+Portfolio.Data.number <- Portfolio.Data$nomem_encr
+Portfolio.Data.Diversification <- Portfolio.Data$Diversification
+
+Portfolio.Data <- as.data.frame(cbind(Portfolio.Data.number, Portfolio.Data.Diversification))
+colnames(Portfolio.Data) <- c("nomem_encr", "Diversification")
+```
+
+Merging the data sets used to examine the relationship between financial literacy and financial diversification
+```{r}
+F.Literacy.11.C1 <- F.Literacy.11$nomem_encr
+F.Literacy.11.FL <- F.Literacy.11$Financially_literate
+
+F.Literacy.11 <- as.data.frame(cbind(F.Literacy.11.C1, F.Literacy.11.FL))
+colnames(F.Literacy.11) <- c("nomem_encr", "Financially_literate")
+
+Portfolio.Data <- merge(Portfolio.Data, F.Literacy.11, by = "nomem_encr")
+Portfolio.Data <- merge(Portfolio.Data, Background.11, by = "nomem_encr")
+Portfolio.Data <- merge(Portfolio.Data, Income.11, by = "nomem_encr")
+Portfolio.Data <- merge(Portfolio.Data, Housing.11, by = "nomem_encr")
+Portfolio.Data <- merge(Portfolio.Data, Work.11, by = "nomem_encr")
+Portfolio.Data <- merge(Portfolio.Data, Personality.11, by = "nomem_encr")
+Portfolio.Data <- merge(Portfolio.Data, Integration.11, by  = "nomem_encr")
+
+#Remove Income.11 data that is directly related to definition of Diversification; that is, the outcome variable
+Portfolio.Data$ci11d008 <- NULL 
+Portfolio.Data$ci11d144 <- NULL 
+Portfolio.Data$ci11d145 <- NULL 
+Portfolio.Data$ci11d146 <- NULL 
+Portfolio.Data$ci11d147 <- NULL 
+Portfolio.Data$ci11d148 <- NULL 
+Portfolio.Data$ci11d149 <- NULL 
+Portfolio.Data$ci11d150 <- NULL 
+Portfolio.Data$ci11d151 <- NULL 
+Portfolio.Data$ci11d152 <- NULL
+Portfolio.Data$ci11d153 <- NULL 
+Portfolio.Data$ci11d175 <- NULL 
+Portfolio.Data$ci11d177 <- NULL
+
+#Removing variables without variation
+Portfolio.Data$cs11d293_9 <- NULL
+Portfolio.Data$cs11d293_8 <- NULL
+Portfolio.Data$cs11d292_9 <- NULL
+Portfolio.Data$cs11d292_8 <- NULL
+Portfolio.Data$cs11d290_9 <- NULL
+Portfolio.Data$cs11d290_8 <- NULL
+Portfolio.Data$woning_5 <- NULL
+Portfolio.Data$woning_3 <- NULL
+Portfolio.Data$aantalki_8 <- NULL
+Portfolio.Data$aantalki_9 <- NULL
+Portfolio.Data$ positie_9 <- NULL
+
+#Remove NA's
+Portfolio.Data <- na.omit(Portfolio.Data)
+```
+
+Setting the data in the right format for analysis
+```{r}
+Portfolio.Data[,1:601] <- as.numeric(unlist(list(Portfolio.Data[,1:601])))
+```
+
+
+```{r}
+#y is outcome variable: dependent variable (Financial Diversification)
+y.Diversification <- as.matrix(Portfolio.Data$Diversification)
+
+#z is treatment variable for which inference is conducted: independent variable (Financial Literacy)
+d.Diversification <- as.matrix(Portfolio.Data$Financially_literate)
+
+#x is matrix of potential treatments
+x.Diversification <- Portfolio.Data$Financially_literate
+x2.Diversification<- Portfolio.Data
+x2.Diversification$Financially_literate <- NULL
+
+x.Diversification <- cbind(x.Diversification, x2.Diversification)
+
+x.Diversification$Diversification <- NULL
+#x.Diversification$Financially_literate <- NULL
+x.Diversification$nomem_encr <- NULL
+
+x.Diversification <- as.matrix(x.Diversification)
+x2.Diversification <- as.matrix(x2.Diversification)
+```
+
+Post-double-selection procedure to assess the effect of the treatment financial literacy on financial diversification
+```{r}
+lasso.effect.Diversification = rlassoEffects(x.Diversification, y.Diversification, index = c("x.Diversification"), 
+                            method = "double selection", included = TRUE , I3 = NULL, post = FALSE, ... = 601)
+```
+
+```{r}
+summary(lasso.effect.Diversification)
+```
+
+Specifying the post-double-selection Lasso procedure to identify the many potential causes of financial diversification
+```{r}
+lasso.effects.Diversification = rlassoEffects(x.Diversification, y.Diversification, index = c(1:ncol(x.Diversification)), 
+                            method = "double selection", included = TRUE , I3 = NULL, post = FALSE, ... = 601)
+```
+
+Summary of the post-double-selection Lasso procedure to identify the many potential causes of financail diversification
+```{r}
+summary(lasso.effects.Diversification)
+```
+
+
+#Define the (multiple) dependent variables for the analyses
+
+Defining portfolio diversification, and ability to collect cash-flows from that diversification.
+
+This is done by combining the number of different asset classes respondents have (in the Asset.12 Data), with the number of sources people get cash from (Income.12). 
+```{r}
+Investment.Data <- merge(Asset.12, Income.12, by = "nomem_encr")
+Investment.Data <- na.omit(Investment.Data)
+```
+
+
+```{r}
+Investment.Data$Investments <- Investment.Data$ca12c006 + Investment.Data$ca12c007 + Investment.Data$ci12e144 +
+  Investment.Data$ci12e152 + Investment.Data$ci12e153
+
+#Invsetments can be square root transformed with the below function
+#Investment.Data$Investments <- sqrt(Investment.Data$Investments)
+```
+
+Plot of the distribution of financial investments
+```{r}
+ggplot(Investment.Data, aes(Investments)) + geom_bar()
+```
+
+```{r}
+Investment.Data.number <- Investment.Data$nomem_encr
+Investment.Data.Investments <- Investment.Data$Investments
+
+Investment.Data <- as.data.frame(cbind(Investment.Data.number, Investment.Data.Investments))
+colnames(Investment.Data) <- c("nomem_encr", "Investments")
+```
+
+Merging data sets to for the analysis of the effect of financial literacy on investments
+```{r}
+F.Literacy.11.C1 <- F.Literacy.11$nomem_encr
+F.Literacy.11.FL <- F.Literacy.11$Financially_literate
+
+F.Literacy.11 <- as.data.frame(cbind(F.Literacy.11.C1, F.Literacy.11.FL))
+colnames(F.Literacy.11) <- c("nomem_encr", "Financially_literate")
+
+Investment.Data <- merge(Investment.Data, F.Literacy.11, by = "nomem_encr")
+Investment.Data <- merge(Investment.Data, Background.11, by = "nomem_encr")
+Investment.Data <- merge(Investment.Data, Income.11, by = "nomem_encr")
+Investment.Data <- merge(Investment.Data, Housing.11, by = "nomem_encr")
+Investment.Data <- merge(Investment.Data, Work.11, by = "nomem_encr")
+Investment.Data <- merge(Investment.Data, Personality.11, by = "nomem_encr")
+Investment.Data <- merge(Investment.Data, Integration.11, by  = "nomem_encr")
+
+#Remove Income.11 data that is directly related to definition of Diversification
+Investment.Data$ci11d144 <- NULL 
+Investment.Data$ci11d152 <- NULL
+Investment.Data$ci11d153 <- NULL 
+
+#Removing variables without variation
+Investment.Data$cs11d293_9 <- NULL
+Investment.Data$cs11d293_8 <- NULL
+Investment.Data$cs11d292_9 <- NULL
+Investment.Data$cs11d292_8 <- NULL
+Investment.Data$cs11d290_9 <- NULL
+Investment.Data$cs11d290_8 <- NULL
+Investment.Data$woning_5 <- NULL
+Investment.Data$woning_3 <- NULL
+Investment.Data$aantalki_8 <- NULL
+Investment.Data$aantalki_9 <- NULL
+Investment.Data$ positie_9 <- NULL
+
+#Remove NA's
+Investment.Data <- na.omit(Investment.Data)
+```
+
+Setting the data in the right format for analysis
+```{r}
+Investment.Data[,1:611] <- as.numeric(unlist(list(Investment.Data[,1:611])))
+```
+
+Do this
+```{r}
+#y is outcome variable: dependent variable (Financial Diversification)
+y.Investment <- as.matrix(Investment.Data$Investments)
+
+#z is treatment variable for which inference is conducted: independent variable (Financial Literacy)
+d.Investment <- as.matrix(Investment.Data$Financially_literate)
+
+#x is matrix of potential treatments
+x.Investment <- Investment.Data$Financially_literate
+x2.Investment<- Investment.Data
+x2.Investment$Financially_literate <- NULL
+
+x.Investment <- cbind(x.Investment, x2.Investment)
+
+x.Investment$Investments <- NULL
+x.Investment$nomem_encr <- NULL
+
+x.Investment <- as.matrix(x.Investment)
+x2.Investment <- as.matrix(x2.Investment)
+```
+
+Post-double-selection Lasso procedure to assess the effect of the treatment financial literacy on investments
+```{r}
+lasso.effect.Investments = rlassoEffects(x.Investment, y.Investment, index = c("x.Investment"), 
+                            method = "double selection", included = TRUE , I3 = NULL, post = FALSE, ... = 610)
+```
+
+```{r}
+summary(lasso.effect.Investments)
+```
+
+The post-double-selection Lasso procedure to identify the many potential causes of investments
+```{r}
+lasso.effects.Investments = rlassoEffects(x.Investment, y.Investment, index = c(1:ncol(x.Investment)), 
+                            method = "double selection", included = TRUE , I3 = NULL, post = FALSE, ... = 610)
+```
+
+
+Summary of the post-double-selection Lasso procedure to identify the many potential causes of investments
+```{r}
+summary(lasso.effects.Investments)
+```
+
+
+#Defining Risk Appetite
+```{r}
+Risk.12$ga12a001[is.na(Risk.12$ga12a001)] <- 0
+Risk.12$ga12a002[is.na(Risk.12$ga12a002)] <- 0
+Risk.12$ga12a003[is.na(Risk.12$ga12a003)] <- 0
+
+Risk.12$option_1 <- ifelse(Risk.12$ga12a001 >= 34, 1, 0)
+Risk.12$option_2 <- ifelse(Risk.12$ga12a002 >= 34, 10, 0)
+Risk.12$option_3 <- ifelse(Risk.12$ga12a003 >= 34, 30, 0)
+
+Risk.12$option <- Risk.12$option_1 + Risk.12$option_2 + Risk.12$option_3
+
+Risk.12$option_score_1 <- ifelse(Risk.12$option == 1, 1, 0)
+Risk.12$option_score_2 <- ifelse(Risk.12$option == 11, 2, 0)
+Risk.12$option_score_3 <- ifelse(Risk.12$option == 10, 3, 0)
+Risk.12$option_score_4 <- ifelse(Risk.12$option == 40, 4, 0)
+Risk.12$option_score_5 <- ifelse(Risk.12$option == 30, 5, 0)
+
+Risk.12$options <- Risk.12$option_score_1 + Risk.12$option_score_2 + Risk.12$option_score_3 + Risk.12$option_score_4 + Risk.12$option_score_5
+
+Risk.12$ga12a004[Risk.12$ga12a004 == 1] <- 10
+Risk.12$ga12a004[Risk.12$ga12a004 == 2] <- 20
+Risk.12$ga12a004[Risk.12$ga12a004 == 4] <- 40
+Risk.12$ga12a004[Risk.12$ga12a004 == 5] <- 50
+
+Risk.12$ga12a004[Risk.12$ga12a004 == 10] <- 5
+Risk.12$ga12a004[Risk.12$ga12a004 == 20] <- 4
+Risk.12$ga12a004[Risk.12$ga12a004 == 40] <- 2
+Risk.12$ga12a004[Risk.12$ga12a004 == 50] <- 1
+
+Risk.12$Risk <- Risk.12$ga12a004 + Risk.12$ga12a005 + Risk.12$options
+
+Risk.id <- as.data.frame(Risk.12$nomem_encr)
+Risk.dt <- as.data.frame(Risk.12$Risk)
+
+Risk.Data <- cbind(Risk.id, Risk.dt)
+colnames(Risk.Data) <- c("nomem_encr", "Risk")
+
+Risk.Data <- na.omit(Risk.Data)
+Risk.Data$Risk <- Risk.Data$Risk - 2
+```
+
+Plot of the distribution of financial literacy
+```{r}
+ggplot(Risk.Data, aes(Risk)) + geom_bar()
+```
+
+
+Merging the data sets for the analysis of Risk preferences
+```{r}
+F.Literacy.11.C1 <- F.Literacy.11$nomem_encr
+F.Literacy.11.FL <- F.Literacy.11$Financially_literate
+
+F.Literacy.11 <- as.data.frame(cbind(F.Literacy.11.C1, F.Literacy.11.FL))
+colnames(F.Literacy.11) <- c("nomem_encr", "Financially_literate")
+
+Risk.Data <- merge(Risk.Data, F.Literacy.11, by = "nomem_encr")
+Risk.Data <- merge(Risk.Data, Background.11, by = "nomem_encr")
+Risk.Data <- merge(Risk.Data, Income.11, by = "nomem_encr")
+Risk.Data <- merge(Risk.Data, Housing.11, by = "nomem_encr")
+Risk.Data <- merge(Risk.Data, Work.11, by = "nomem_encr")
+Risk.Data <- merge(Risk.Data, Personality.11, by = "nomem_encr")
+Risk.Data <- merge(Risk.Data, Integration.11, by  = "nomem_encr")
+
+#Removing variables without variation
+Risk.Data$cs11d293_9 <- NULL
+Risk.Data$cs11d293_8 <- NULL
+Risk.Data$cs11d292_9 <- NULL
+Risk.Data$cs11d292_8 <- NULL
+Risk.Data$cs11d290_9 <- NULL
+Risk.Data$cs11d290_8 <- NULL
+Risk.Data$woning_5 <- NULL
+Risk.Data$woning_3 <- NULL
+Risk.Data$aantalki_8 <- NULL
+Risk.Data$aantalki_9 <- NULL
+Risk.Data$ positie_9 <- NULL
+
+#Remove NA's
+Risk.Data <- na.omit(Risk.Data)
+```
+
+Setting the data in the right format for analysis
+```{r}
+Risk.Data[,1:614] <- as.numeric(unlist(list(Risk.Data[,1:614])))
+```
+
+```{r}
+#y is outcome variable: dependent variable (Risk Preferences)
+y.Risk <- as.matrix(Risk.Data$Risk)
+
+#z is treatment variable for which inference is conducted: independent variable (Financial Literacy)
+d.Risk <- as.matrix(Risk.Data$Financially_literate)
+
+#x is matrix of potential treatments
+x.Risk <- Risk.Data$Financially_literate
+x2.Risk<- Risk.Data
+x2.Risk$Financially_literate <- NULL
+
+x.Risk <- cbind(x.Risk, x2.Risk)
+
+x.Risk$Risk <- NULL
+#x.Risk$Financially_literate <- NULL
+x.Risk$nomem_encr <- NULL
+
+x.Risk <- as.matrix(x.Risk)
+x2.Risk <- as.matrix(x2.Risk)
+```
+
+
+A post-double-selection Lasso procedure to establish the treatment effect of finanical literacy on risk preferences
+```{r}
+lasso.effect.Risk.Final = rlassoEffects(x.Risk, y.Risk, index = c("x.Risk"), 
+                            method = "double selection", included = TRUE , I3 = NULL, post = FALSE, ... = 612)
+```
+
+Summary of the effect of financial literacy on risk preferences
+```{r}
+summary(lasso.effect.Risk.Final)
+```
+
+The post-double-selection Lasso procedure to identify the many potential causes of risk preferences
+```{r}
+lasso.effects.Risk.Final = rlassoEffects(x.Risk, y.Risk, index = c(1:ncol(x.Risk)), 
+                            method = "double selection", included = TRUE , I3 = NULL, post = FALSE, ... = 612)
+```
+
+Summary of the post-double-selection Lasso procedure to identify the many potential causes of risk preferences 
+```{r}
+summary(lasso.effects.Risk.Final)
+```
+
+
+#Save the results as an RData file
+```{r}
+save(lasso.effect.Diversification, lasso.effects.Diversification, lasso.effect.Investments, lasso.effects.Investments, 
+     lasso.effect.Risk.Final, lasso.effects.Risk.Final, file = "Thesis_Results_Final.RData")
+```
+
+Save the globa environment as an RData file
+```{r}
+save.image("Thesis_Final_Environment.RData")
+```
+
